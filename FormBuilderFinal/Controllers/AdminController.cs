@@ -76,8 +76,15 @@ namespace FormBuilder.Controllers
                 return NotFound();
             }
 
+            var isCurrentUser = user.Id == _userManager.GetUserId(User);
             user.IsBlocked = !user.IsBlocked;
             await _userManager.UpdateAsync(user);
+
+            if (isCurrentUser && user.IsBlocked)
+            {
+                await _signInManager.SignOutAsync();
+                return RedirectToAction("Index", "Home");
+            }
 
             return RedirectToAction("Index");
         }
