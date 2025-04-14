@@ -1,0 +1,49 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="hero-section text-center py-5 bg-light rounded-3 mb-4">
+    <h1 class="display-4 fw-bold">Welcome to FormBuilder</h1>
+    <p class="lead">Create and manage customizable forms with ease</p>
+
+    @if (!User.Identity.IsAuthenticated)
+    {
+        <div class="mt-4">
+            <a asp-controller="Account" asp-action="Register" class="btn btn-primary btn-lg me-2">Get Started</a>
+            <a asp-controller="Account" asp-action="Login" class="btn btn-outline-primary btn-lg">Login</a>
+        </div>
+    }
+    else
+    {
+        <div class="mt-4">
+            <a href="#" class="btn btn-primary btn-lg">Create New Form</a>
+        </div>
+    }
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Easy Form Creation</h5>
+                <p class="card-text">Create customizable forms with various question types in minutes.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Responsive Design</h5>
+                <p class="card-text">Forms look great on any device, from desktop to mobile.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Powerful Analytics</h5>
+                <p class="card-text">Get insights from responses with built-in analytics tools.</p>
+            </div>
+        </div>
+    </div>
+</div>
