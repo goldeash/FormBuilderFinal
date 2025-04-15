@@ -6,6 +6,7 @@ using FormBuilder.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,10 +17,18 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Identity
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+// Identity with configuration
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = false;
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
 // Authentication
 builder.Services.AddAuthentication(options =>
@@ -32,7 +41,15 @@ builder.Services.AddAuthentication(options =>
 {
     options.LoginPath = "/Account/Login";
     options.LogoutPath = "/Account/Logout";
-    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+    options.SlidingExpiration = true;
+
+    // Важная настройка для принудительного выхода
+    options.Events = new CookieAuthenticationEvents
+    {
+        OnValidatePrincipal = SecurityStampValidator.ValidatePrincipalAsync
+    };
 })
 .AddJwtBearer(options =>
 {
@@ -45,6 +62,12 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
     };
+});
+
+// Настройка проверки SecurityStamp
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromSeconds(30); // Проверка каждые 30 секунд
 });
 
 // Authorization
@@ -69,6 +92,24 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Добавляем endpoint для проверки статуса
+app.Map("/api/auth/check-status", async context =>
+{
+    var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+    var user = await userManager.GetUserAsync(context.User);
+
+    if (user == null || user.IsBlocked)
+    {
+        context.Response.StatusCode = 403;
+        await context.Response.WriteAsync("User is blocked or deleted");
+    }
+    else
+    {
+        context.Response.StatusCode = 200;
+        await context.Response.WriteAsync("OK");
+    }
+});
 
 app.MapControllerRoute(
     name: "default",

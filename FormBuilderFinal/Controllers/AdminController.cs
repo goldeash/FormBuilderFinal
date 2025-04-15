@@ -76,11 +76,17 @@ namespace FormBuilder.Controllers
                 return NotFound();
             }
 
-            var isCurrentUser = user.Id == _userManager.GetUserId(User);
             user.IsBlocked = !user.IsBlocked;
             await _userManager.UpdateAsync(user);
 
-            if (isCurrentUser && user.IsBlocked)
+            // Принудительный выход для всех сессий пользователя
+            if (user.IsBlocked)
+            {
+                await _userManager.UpdateSecurityStampAsync(user);
+            }
+
+            // Если пользователь блокирует себя - выходим
+            if (user.Id == _userManager.GetUserId(User) && user.IsBlocked)
             {
                 await _signInManager.SignOutAsync();
                 return RedirectToAction("Index", "Home");
@@ -98,6 +104,9 @@ namespace FormBuilder.Controllers
             {
                 return NotFound();
             }
+
+            // Принудительный выход для всех сессий пользователя
+            await _userManager.UpdateSecurityStampAsync(user);
 
             var isCurrentUser = user.Id == _userManager.GetUserId(User);
             var result = await _userManager.DeleteAsync(user);
