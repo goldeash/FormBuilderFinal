@@ -1,0 +1,132 @@
+﻿@model FormBuilder.ViewModels.TemplateViewModel
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h4>Template Details</h4>
+    </div>
+    <div class="card-body">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="mb-3">
+            <label asp-for="Title" class="form-label"></label>
+            <input asp-for="Title" class="form-control" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label"></label>
+            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Topic" class="form-label"></label>
+            <select asp-for="Topic" class="form-select">
+                <option value="Education">Education</option>
+                <option value="Quiz">Quiz</option>
+                <option value="Survey">Survey</option>
+                <option value="Other" selected>Other</option>
+            </select>
+            <span asp-validation-for="Topic" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3 form-check">
+            <input asp-for="IsPublic" class="form-check-input" />
+            <label asp-for="IsPublic" class="form-check-label"></label>
+            <span asp-validation-for="IsPublic" class="text-danger"></span>
+        </div>
+
+        <div id="allowedUsersContainer" class="mb-3" style="@(Model.IsPublic ? "display: none;" : "")">
+            <label class="form-label">Allowed Users</label>
+            <div id="allowedUsersList">
+                @for (int i = 0; i < Model.AllowedUserEmails.Count; i++)
+                {
+                    <div class="input-group mb-2">
+                        <input name="AllowedUserEmails" value="@Model.AllowedUserEmails[i]" class="form-control user-email" />
+                        <button type="button" class="btn btn-outline-danger remove-user">Remove</button>
+                    </div>
+                }
+            </div>
+            <button type="button" id="addUserBtn" class="btn btn-sm btn-outline-primary">Add User</button>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Tags</label>
+            <div id="tagsList">
+                @for (int i = 0; i < Model.Tags.Count; i++)
+                {
+                    <div class="input-group mb-2">
+                        <input name="Tags" value="@Model.Tags[i]" class="form-control tag-input" />
+                        <button type="button" class="btn btn-outline-danger remove-tag">Remove</button>
+                    </div>
+                }
+            </div>
+            <button type="button" id="addTagBtn" class="btn btn-sm btn-outline-primary">Add Tag</button>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4>Questions</h4>
+        <button type="button" id="addQuestionBtn" class="btn btn-primary">Add Question</button>
+    </div>
+    <div class="card-body">
+        <div id="questionsContainer">
+            @for (int i = 0; i < Model.Questions.Count; i++)
+            {
+                <div class="question-card card mb-3" data-index="@i">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Question @(i + 1)</h5>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-question">Remove</button>
+                    </div>
+                    <div class="card-body">
+                        <input type="hidden" name="Questions[@i].Id" value="@Model.Questions[i].Id" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Question Type</label>
+                            <select name="Questions[@i].Type" class="form-select question-type">
+                                <option value="SingleLineText" selected="@(Model.Questions[i].Type == "SingleLineText")">Single Line Text</option>
+                                <option value="MultiLineText" selected="@(Model.Questions[i].Type == "MultiLineText")">Multi Line Text</option>
+                                <option value="Integer" selected="@(Model.Questions[i].Type == "Integer")">Integer</option>
+                                <option value="Checkbox" selected="@(Model.Questions[i].Type == "Checkbox")">Checkbox</option>
+                                <option value="MultipleChoice" selected="@(Model.Questions[i].Type == "MultipleChoice")">Multiple Choice</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Question Text</label>
+                            <input name="Questions[@i].Title" value="@Model.Questions[i].Title" class="form-control" />
+                            <span class="text-danger field-validation-valid" data-valmsg-for="Questions[@i].Title" data-valmsg-replace="true"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description (optional)</label>
+                            <input name="Questions[@i].Description" value="@(Model.Questions[i].Description ?? "")" class="form-control" />
+                            <span class="text-danger field-validation-valid" data-valmsg-for="Questions[@i].Description" data-valmsg-replace="true"></span>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="Questions[@i].ShowInTable" value="true" checked="@Model.Questions[i].ShowInTable" class="form-check-input" />
+                            <label class="form-check-label">Show in results table</label>
+                        </div>
+
+                        <div class="options-container" style="@(Model.Questions[i].Type == "MultipleChoice" ? "" : "display: none;")">
+                            <label class="form-label">Options</label>
+                            <div class="options-list mb-2">
+                                @for (int j = 0; j < Model.Questions[i].Options.Count; j++)
+                                {
+                                    <div class="input-group mb-2">
+                                        <input name="Questions[@i].Options" value="@Model.Questions[i].Options[j]" class="form-control" />
+                                        <button type="button" class="btn btn-outline-danger remove-option">Remove</button>
+                                    </div>
+                                }
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary add-option">Add Option</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
