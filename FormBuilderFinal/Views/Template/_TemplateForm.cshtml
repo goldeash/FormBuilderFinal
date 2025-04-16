@@ -22,10 +22,20 @@
         <div class="mb-3">
             <label asp-for="Topic" class="form-label"></label>
             <select asp-for="Topic" class="form-select">
-                <option value="Education">Education</option>
-                <option value="Quiz">Quiz</option>
-                <option value="Survey">Survey</option>
-                <option value="Other" selected>Other</option>
+                @{
+                    var topics = new List<string> { "Education", "Quiz", "Survey", "Other" };
+                    foreach (var topic in topics)
+                    {
+                        if (Model.Topic == topic)
+                        {
+                            <option value="@topic" selected>@topic</option>
+                        }
+                        else
+                        {
+                            <option value="@topic">@topic</option>
+                        }
+                    }
+                }
             </select>
             <span asp-validation-for="Topic" class="text-danger"></span>
         </div>
