@@ -3,10 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using FormBuilder.Models;
 using FormBuilder.Data;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +13,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Identity with configuration
+// Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
@@ -31,44 +27,15 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddDefaultTokenProviders();
 
 // Authentication
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
-{
-    options.LoginPath = "/Account/Login";
-    options.LogoutPath = "/Account/Logout";
-    options.AccessDeniedPath = "/Account/AccessDenied";
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
-    options.SlidingExpiration = true;
-
-    // Важная настройка для принудительного выхода
-    options.Events = new CookieAuthenticationEvents
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
     {
-        OnValidatePrincipal = SecurityStampValidator.ValidatePrincipalAsync
-    };
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
-        ValidAudience = builder.Configuration["JWT:ValidAudience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
-    };
-});
-
-// Настройка проверки SecurityStamp
-builder.Services.Configure<SecurityStampValidatorOptions>(options =>
-{
-    options.ValidationInterval = TimeSpan.FromSeconds(30); // Проверка каждые 30 секунд
-});
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+        options.SlidingExpiration = true;
+    });
 
 // Authorization
 builder.Services.AddAuthorization(options =>
@@ -93,22 +60,33 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Добавляем endpoint для проверки статуса
-app.Map("/api/auth/check-status", async context =>
+// Добавляем после app.UseAuthentication() и app.UseAuthorization()
+app.Use(async (context, next) =>
 {
-    var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-    var user = await userManager.GetUserAsync(context.User);
+    if (context.User.Identity?.IsAuthenticated == true)
+    {
+        var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+        var signInManager = context.RequestServices.GetRequiredService<SignInManager<ApplicationUser>>();
 
-    if (user == null || user.IsBlocked)
-    {
-        context.Response.StatusCode = 403;
-        await context.Response.WriteAsync("User is blocked or deleted");
+        var user = await userManager.GetUserAsync(context.User);
+
+        if (user == null || user.IsBlocked)
+        {
+            await signInManager.SignOutAsync();
+            context.Response.Redirect("/Account/Login");    
+            return;
+        }
+
+        // Проверка доступа к админ-панели
+        if (context.Request.Path.StartsWithSegments("/Admin") &&
+            !await userManager.IsInRoleAsync(user, "Admin"))
+        {
+            context.Response.Redirect("/Home/AccessDenied");
+            return;
+        }
     }
-    else
-    {
-        context.Response.StatusCode = 200;
-        await context.Response.WriteAsync("OK");
-    }
+
+    await next();
 });
 
 app.MapControllerRoute(

@@ -26,9 +26,10 @@ namespace FormBuilder.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
 
-            if (user == null || user.IsBlocked)
+            if (user == null || user.IsBlocked || !await _userManager.IsInRoleAsync(user, "Admin") &&
+                HttpContext.Request.Path.StartsWithSegments("/Admin"))
             {
-                // Если пользователь заблокирован или удален
+                // Если пользователь заблокирован, удален или пытается получить доступ к админ-панели без прав
                 await _signInManager.SignOutAsync();
                 return Forbid();
             }

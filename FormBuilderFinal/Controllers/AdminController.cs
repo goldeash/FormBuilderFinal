@@ -54,6 +54,8 @@ namespace FormBuilder.Controllers
                 return NotFound();
             }
 
+            var isCurrentUser = user.Id == _userManager.GetUserId(User);
+
             if (await _userManager.IsInRoleAsync(user, "Admin"))
             {
                 await _userManager.RemoveFromRoleAsync(user, "Admin");
@@ -61,6 +63,15 @@ namespace FormBuilder.Controllers
             else
             {
                 await _userManager.AddToRoleAsync(user, "Admin");
+            }
+
+            // Обновляем SecurityStamp для выхода из всех сессий
+            await _userManager.UpdateSecurityStampAsync(user);
+
+            // Если это текущий пользователь - обновляем его аутентификацию
+            if (isCurrentUser)
+            {
+                await _signInManager.RefreshSignInAsync(user);
             }
 
             return RedirectToAction("Index");
@@ -76,17 +87,14 @@ namespace FormBuilder.Controllers
                 return NotFound();
             }
 
+            var isCurrentUser = user.Id == _userManager.GetUserId(User);
+
             user.IsBlocked = !user.IsBlocked;
             await _userManager.UpdateAsync(user);
-
-            // Принудительный выход для всех сессий пользователя
-            if (user.IsBlocked)
-            {
-                await _userManager.UpdateSecurityStampAsync(user);
-            }
+            await _userManager.UpdateSecurityStampAsync(user);
 
             // Если пользователь блокирует себя - выходим
-            if (user.Id == _userManager.GetUserId(User) && user.IsBlocked)
+            if (isCurrentUser && user.IsBlocked)
             {
                 await _signInManager.SignOutAsync();
                 return RedirectToAction("Index", "Home");
@@ -105,10 +113,11 @@ namespace FormBuilder.Controllers
                 return NotFound();
             }
 
+            var isCurrentUser = user.Id == _userManager.GetUserId(User);
+
             // Принудительный выход для всех сессий пользователя
             await _userManager.UpdateSecurityStampAsync(user);
 
-            var isCurrentUser = user.Id == _userManager.GetUserId(User);
             var result = await _userManager.DeleteAsync(user);
 
             if (result.Succeeded && isCurrentUser)
@@ -129,4 +138,4 @@ namespace FormBuilder.Controllers
             public bool IsCurrentUser { get; set; }
         }
     }
-}
+}   
