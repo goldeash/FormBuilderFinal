@@ -19,8 +19,18 @@ namespace FormBuilder.ViewModels
 
         public int Position { get; set; }
 
-        public bool ShowInTable { get; set; }
+        public bool IsRequired { get; set; }
 
-        public List<string> Options { get; set; } = new List<string>();
+        public bool HaveAnswer { get; set; }
+
+        public string? CorrectAnswer { get; set; }
+
+        public List<OptionViewModel> Options { get; set; } = new List<OptionViewModel>();
+    }
+
+    public class OptionViewModel
+    {
+        public string Value { get; set; }
+        public bool IsCorrect { get; set; }
     }
 }

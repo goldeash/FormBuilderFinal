@@ -24,11 +24,47 @@
         $(document).ready(function() {
             // Handle question type change
             $(document).on('change', '.question-type', function() {
-                const optionsContainer = $(this).closest('.card-body').find('.options-container');
+                const cardBody = $(this).closest('.card-body');
+                const optionsContainer = cardBody.find('.options-container');
+                const correctAnswerContainer = cardBody.find('.correct-answer-container');
+                const haveAnswer = cardBody.find('.have-answer').is(':checked');
+
                 if ($(this).val() === 'MultipleChoice') {
                     optionsContainer.show();
+                    correctAnswerContainer.hide();
                 } else {
                     optionsContainer.hide();
+                    if (haveAnswer) {
+                        correctAnswerContainer.show();
+                    }
+                }
+            });
+
+            // Handle have answer checkbox change
+            $(document).on('change', '.have-answer', function() {
+                const cardBody = $(this).closest('.card-body');
+                const questionType = cardBody.find('.question-type').val();
+                const correctAnswerContainer = cardBody.find('.correct-answer-container');
+                const optionsContainer = cardBody.find('.options-container');
+
+                if ($(this).is(':checked')) {
+                    if (questionType !== 'MultipleChoice') {
+                        correctAnswerContainer.show();
+                    }
+                    // Refresh options to show checkboxes
+                    optionsContainer.find('.input-group').each(function() {
+                        if (!$(this).find('.input-group-text').length) {
+                            $(this).append(`
+                                <div class="input-group-text">
+                                    <input type="checkbox" name="${$(this).find('input').attr('name').replace('.Value', '.IsCorrect')}" class="form-check-input" />
+                                </div>
+                            `);
+                        }
+                    });
+                } else {
+                    correctAnswerContainer.hide();
+                    // Remove all answer checkboxes
+                    optionsContainer.find('.input-group-text').remove();
                 }
             });
 
@@ -50,7 +86,6 @@
                                     <option value="SingleLineText" selected>Single Line Text</option>
                                     <option value="MultiLineText">Multi Line Text</option>
                                     <option value="Integer">Integer</option>
-                                    <option value="Checkbox">Checkbox</option>
                                     <option value="MultipleChoice">Multiple Choice</option>
                                 </select>
                             </div>
@@ -66,8 +101,18 @@
                             </div>
 
                             <div class="mb-3 form-check">
-                                <input type="checkbox" name="Questions[${index}].ShowInTable" value="true" class="form-check-input" />
-                                <label class="form-check-label">Show in results table</label>
+                                <input type="checkbox" name="Questions[${index}].IsRequired" value="true" class="form-check-input" />
+                                <label class="form-check-label">Is Required</label>
+                            </div>
+
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" name="Questions[${index}].HaveAnswer" value="true" class="form-check-input have-answer" />
+                                <label class="form-check-label">Have Answer</label>
+                            </div>
+
+                            <div class="correct-answer-container mb-3" style="display: none;">
+                                <label class="form-label">Correct Answer</label>
+                                <input name="Questions[${index}].CorrectAnswer" class="form-control" />
                             </div>
 
                             <div class="options-container" style="display: none;">
@@ -92,12 +137,23 @@
                 const optionsList = $(this).siblings('.options-list');
                 const questionIndex = $(this).closest('.question-card').data('index');
                 const optionIndex = optionsList.children().length;
-                const newOption = `
+                const haveAnswer = $(this).closest('.card-body').find('.have-answer').is(':checked');
+
+                let newOption = `
                     <div class="input-group mb-2">
-                        <input name="Questions[${questionIndex}].Options" class="form-control" />
+                        <input name="Questions[${questionIndex}].Options[${optionIndex}].Value" class="form-control" />`;
+
+                if (haveAnswer) {
+                    newOption += `
+                        <div class="input-group-text">
+                            <input type="checkbox" name="Questions[${questionIndex}].Options[${optionIndex}].IsCorrect" class="form-check-input" />
+                        </div>`;
+                }
+
+                newOption += `
                         <button type="button" class="btn btn-outline-danger remove-option">Remove</button>
-                    </div>
-                `;
+                    </div>`;
+
                 optionsList.append(newOption);
             });
 

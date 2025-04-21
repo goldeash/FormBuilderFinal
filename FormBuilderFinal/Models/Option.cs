@@ -12,6 +12,8 @@ namespace FormBuilder.Models
         [StringLength(200)]
         public string Value { get; set; }
 
+        public bool IsCorrect { get; set; }
+
         [Required]
         public int QuestionId { get; set; }
 

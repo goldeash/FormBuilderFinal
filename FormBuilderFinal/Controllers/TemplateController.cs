@@ -95,15 +95,21 @@ namespace FormBuilder.Controllers
                         Description = questionModel.Description ?? string.Empty,
                         Type = Enum.Parse<QuestionType>(questionModel.Type),
                         Position = i,
-                        ShowInTable = questionModel.ShowInTable
+                        IsRequired = questionModel.IsRequired,
+                        HaveAnswer = questionModel.HaveAnswer,
+                        CorrectAnswer = questionModel.CorrectAnswer
                     };
 
                     // Add options for multiple choice questions
                     if (question.Type == QuestionType.MultipleChoice)
                     {
-                        foreach (var optionValue in questionModel.Options)
+                        foreach (var option in questionModel.Options)
                         {
-                            question.Options.Add(new Option { Value = optionValue });
+                            question.Options.Add(new Option
+                            {
+                                Value = option.Value,
+                                IsCorrect = option.IsCorrect
+                            });
                         }
                     }
 
@@ -153,8 +159,14 @@ namespace FormBuilder.Controllers
                         Description = q.Description,
                         Type = q.Type.ToString(),
                         Position = q.Position,
-                        ShowInTable = q.ShowInTable,
-                        Options = q.Options.Select(o => o.Value).ToList()
+                        IsRequired = q.IsRequired,
+                        HaveAnswer = q.HaveAnswer,
+                        CorrectAnswer = q.CorrectAnswer,
+                        Options = q.Options.Select(o => new OptionViewModel
+                        {
+                            Value = o.Value,
+                            IsCorrect = o.IsCorrect
+                        }).ToList()
                     }).ToList()
             };
 
@@ -233,7 +245,14 @@ namespace FormBuilder.Controllers
 
                     if (question == null)
                     {
-                        question = new Question { TemplateId = template.Id, Position = i };
+                        question = new Question
+                        {
+                            TemplateId = template.Id,
+                            Position = i,
+                            IsRequired = questionModel.IsRequired,
+                            HaveAnswer = questionModel.HaveAnswer,
+                            CorrectAnswer = questionModel.CorrectAnswer
+                        };
                         template.Questions.Add(question);
                     }
 
@@ -241,21 +260,38 @@ namespace FormBuilder.Controllers
                     question.Description = questionModel.Description ?? string.Empty;
                     question.Type = Enum.Parse<QuestionType>(questionModel.Type);
                     question.Position = i;
-                    question.ShowInTable = questionModel.ShowInTable;
+                    question.IsRequired = questionModel.IsRequired;
+                    question.HaveAnswer = questionModel.HaveAnswer;
+                    question.CorrectAnswer = questionModel.CorrectAnswer;
 
                     // Update options for multiple choice questions
                     if (question.Type == QuestionType.MultipleChoice)
                     {
                         var existingOptions = question.Options.ToList();
-                        var newOptions = questionModel.Options.ToList();
+                        var newOptions = questionModel.Options ?? new List<OptionViewModel>();
 
                         // Remove options not in new list
-                        foreach (var option in existingOptions.Where(o => !newOptions.Contains(o.Value)))
+                        foreach (var option in existingOptions.Where(o => !newOptions.Any(no => no.Value == o.Value)))
                             _context.Options.Remove(option);
 
-                        // Add new options
-                        foreach (var optionValue in newOptions.Where(o => !existingOptions.Any(eo => eo.Value == o)))
-                            question.Options.Add(new Option { Value = optionValue });
+                        // Add new options and update existing ones
+                        foreach (var optionModel in newOptions)
+                        {
+                            var option = existingOptions.FirstOrDefault(o => o.Value == optionModel.Value);
+                            if (option == null)
+                            {
+                                option = new Option
+                                {
+                                    Value = optionModel.Value,
+                                    IsCorrect = questionModel.HaveAnswer && optionModel.IsCorrect
+                                };
+                                question.Options.Add(option);
+                            }
+                            else
+                            {
+                                option.IsCorrect = questionModel.HaveAnswer && optionModel.IsCorrect;
+                            }
+                        }
                     }
                     else
                     {

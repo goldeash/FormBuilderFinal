@@ -99,7 +99,6 @@
                                 <option value="SingleLineText" selected="@(Model.Questions[i].Type == "SingleLineText")">Single Line Text</option>
                                 <option value="MultiLineText" selected="@(Model.Questions[i].Type == "MultiLineText")">Multi Line Text</option>
                                 <option value="Integer" selected="@(Model.Questions[i].Type == "Integer")">Integer</option>
-                                <option value="Checkbox" selected="@(Model.Questions[i].Type == "Checkbox")">Checkbox</option>
                                 <option value="MultipleChoice" selected="@(Model.Questions[i].Type == "MultipleChoice")">Multiple Choice</option>
                             </select>
                         </div>
@@ -117,8 +116,18 @@
                         </div>
 
                         <div class="mb-3 form-check">
-                            <input type="checkbox" name="Questions[@i].ShowInTable" value="true" checked="@Model.Questions[i].ShowInTable" class="form-check-input" />
-                            <label class="form-check-label">Show in results table</label>
+                            <input type="checkbox" name="Questions[@i].IsRequired" value="true" checked="@Model.Questions[i].IsRequired" class="form-check-input" />
+                            <label class="form-check-label">Is Required</label>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="Questions[@i].HaveAnswer" value="true" checked="@Model.Questions[i].HaveAnswer" class="form-check-input have-answer" />
+                            <label class="form-check-label">Have Answer</label>
+                        </div>
+
+                        <div class="correct-answer-container mb-3" style="@(Model.Questions[i].Type != "MultipleChoice" && Model.Questions[i].HaveAnswer ? "" : "display: none;")">
+                            <label class="form-label">Correct Answer</label>
+                            <input name="Questions[@i].CorrectAnswer" value="@Model.Questions[i].CorrectAnswer" class="form-control" />
                         </div>
 
                         <div class="options-container" style="@(Model.Questions[i].Type == "MultipleChoice" ? "" : "display: none;")">
@@ -127,7 +136,17 @@
                                 @for (int j = 0; j < Model.Questions[i].Options.Count; j++)
                                 {
                                     <div class="input-group mb-2">
-                                        <input name="Questions[@i].Options" value="@Model.Questions[i].Options[j]" class="form-control" />
+                                        <input name="Questions[@i].Options[@j].Value" value="@Model.Questions[i].Options[j].Value" class="form-control" />
+                                        @if (Model.Questions[i].HaveAnswer)
+                                        {
+                                            <div class="input-group-text">
+                                                <input type="checkbox"
+                                                       name="Questions[@i].Options[@j].IsCorrect"
+                                                       value="true"
+                                                @(Model.Questions[i].Options[j].IsCorrect ? "checked" : "")
+                                                       class="form-check-input" />
+                                            </div>
+                                        }
                                         <button type="button" class="btn btn-outline-danger remove-option">Remove</button>
                                     </div>
                                 }
