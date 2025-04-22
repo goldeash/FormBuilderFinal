@@ -108,7 +108,7 @@ namespace FormBuilder.Controllers
                             question.Options.Add(new Option
                             {
                                 Value = option.Value,
-                                IsCorrect = option.IsCorrect
+                                IsCorrect = questionModel.HaveAnswer && option.IsCorrect
                             });
                         }
                     }
@@ -120,6 +120,19 @@ namespace FormBuilder.Controllers
                 await _context.SaveChangesAsync();
 
                 return RedirectToAction("Index");
+            }
+
+            // Add validation errors to ModelState
+            foreach (var question in model.Questions)
+            {
+                for (int i = 0; i < question.Options.Count; i++)
+                {
+                    var option = question.Options[i];
+                    if (string.IsNullOrWhiteSpace(option.Value))
+                    {
+                        ModelState.AddModelError($"Questions[{question.Position}].Options[{i}].Value", "Option value is required");
+                    }
+                }
             }
 
             return View(model);
@@ -312,6 +325,19 @@ namespace FormBuilder.Controllers
                 }
 
                 return RedirectToAction("Index");
+            }
+
+            // Add validation errors to ModelState
+            foreach (var question in model.Questions)
+            {
+                for (int i = 0; i < question.Options.Count; i++)
+                {
+                    var option = question.Options[i];
+                    if (string.IsNullOrWhiteSpace(option.Value))
+                    {
+                        ModelState.AddModelError($"Questions[{question.Position}].Options[{i}].Value", "Option value is required");
+                    }
+                }
             }
 
             return View(model);

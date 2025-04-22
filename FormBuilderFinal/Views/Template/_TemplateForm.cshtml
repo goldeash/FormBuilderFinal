@@ -5,7 +5,7 @@
         <h4>Template Details</h4>
     </div>
     <div class="card-body">
-        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div asp-validation-summary="All" class="text-danger"></div>
 
         <div class="mb-3">
             <label asp-for="Title" class="form-label"></label>
@@ -101,6 +101,7 @@
                                 <option value="Integer" selected="@(Model.Questions[i].Type == "Integer")">Integer</option>
                                 <option value="MultipleChoice" selected="@(Model.Questions[i].Type == "MultipleChoice")">Multiple Choice</option>
                             </select>
+                            <span class="text-danger field-validation-valid" data-valmsg-for="Questions[@i].Type" data-valmsg-replace="true"></span>
                         </div>
 
                         <div class="mb-3">
@@ -127,7 +128,22 @@
 
                         <div class="correct-answer-container mb-3" style="@(Model.Questions[i].Type != "MultipleChoice" && Model.Questions[i].HaveAnswer ? "" : "display: none;")">
                             <label class="form-label">Correct Answer</label>
-                            <input name="Questions[@i].CorrectAnswer" value="@Model.Questions[i].CorrectAnswer" class="form-control" />
+                            @if (Model.Questions[i].Type == "Integer")
+                            {
+                                <input name="Questions[@i].CorrectAnswer"
+                                       value="@Model.Questions[i].CorrectAnswer"
+                                       class="form-control"
+                                       type="number"
+                                       min="0"
+                                       onkeypress="return event.charCode >= 48 && event.charCode <= 57" />
+                            }
+                            else
+                            {
+                                <input name="Questions[@i].CorrectAnswer"
+                                       value="@Model.Questions[i].CorrectAnswer"
+                                       class="form-control" />
+                            }
+                            <span class="text-danger field-validation-valid" data-valmsg-for="Questions[@i].CorrectAnswer" data-valmsg-replace="true"></span>
                         </div>
 
                         <div class="options-container" style="@(Model.Questions[i].Type == "MultipleChoice" ? "" : "display: none;")">
@@ -136,10 +152,16 @@
                                 @for (int j = 0; j < Model.Questions[i].Options.Count; j++)
                                 {
                                     <div class="input-group mb-2">
-                                        <input name="Questions[@i].Options[@j].Value" value="@Model.Questions[i].Options[j].Value" class="form-control" />
+                                        <input name="Questions[@i].Options[@j].Value"
+                                               value="@Model.Questions[i].Options[j].Value"
+                                               class="form-control" />
+                                        <span class="text-danger field-validation-valid"
+                                              data-valmsg-for="Questions[@i].Options[@j].Value"
+                                              data-valmsg-replace="true"></span>
                                         @if (Model.Questions[i].HaveAnswer)
                                         {
                                             <div class="input-group-text">
+                                                <input type="hidden" name="Questions[@i].Options[@j].IsCorrect" value="false" />
                                                 <input type="checkbox"
                                                        name="Questions[@i].Options[@j].IsCorrect"
                                                        value="true"

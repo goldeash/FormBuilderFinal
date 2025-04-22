@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema; // Добавьте эту строку
 
 namespace FormBuilder.ViewModels
 {
@@ -7,14 +8,14 @@ namespace FormBuilder.ViewModels
     {
         public int? Id { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Question text is required")]
         [StringLength(200)]
         public string Title { get; set; }
 
         [StringLength(500)]
         public string? Description { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Question type is required")]
         public string Type { get; set; }
 
         public int Position { get; set; }
@@ -30,7 +31,10 @@ namespace FormBuilder.ViewModels
 
     public class OptionViewModel
     {
+        [Required(ErrorMessage = "Option value is required")]
+        [StringLength(200, ErrorMessage = "Option cannot be longer than 200 characters")]
         public string Value { get; set; }
+
         public bool IsCorrect { get; set; }
     }
 }
