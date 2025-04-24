@@ -66,8 +66,8 @@ namespace FormBuilder.Controllers
                     UpdatedDate = DateTime.UtcNow
                 };
 
-                // Add tags
-                foreach (var tagName in model.Tags.Distinct())
+                // Add tags - filter empty/null
+                foreach (var tagName in model.Tags?.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct() ?? Enumerable.Empty<string>())
                 {
                     template.Tags.Add(new TemplateTag { Name = tagName });
                 }
@@ -75,7 +75,7 @@ namespace FormBuilder.Controllers
                 // Add allowed users if template is not public
                 if (!model.IsPublic)
                 {
-                    foreach (var email in model.AllowedUserEmails.Distinct())
+                    foreach (var email in model.AllowedUserEmails?.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct() ?? Enumerable.Empty<string>())
                     {
                         var allowedUser = await _userManager.FindByEmailAsync(email);
                         if (allowedUser != null)
@@ -86,9 +86,11 @@ namespace FormBuilder.Controllers
                 }
 
                 // Add questions
-                for (int i = 0; i < model.Questions.Count; i++)
+                for (int i = 0; i < model.Questions?.Count; i++)
                 {
                     var questionModel = model.Questions[i];
+                    if (string.IsNullOrWhiteSpace(questionModel.Title)) continue;
+
                     var question = new Question
                     {
                         Title = questionModel.Title,
@@ -101,7 +103,7 @@ namespace FormBuilder.Controllers
                     // Add options for multiple choice questions
                     if (question.Type == QuestionType.MultipleChoice)
                     {
-                        foreach (var optionValue in questionModel.Options)
+                        foreach (var optionValue in questionModel.Options?.Where(o => !string.IsNullOrWhiteSpace(o)) ?? Enumerable.Empty<string>())
                         {
                             question.Options.Add(new Option { Value = optionValue });
                         }
@@ -143,7 +145,7 @@ namespace FormBuilder.Controllers
                 Topic = template.Topic,
                 IsPublic = template.IsPublic,
                 Tags = template.Tags.Select(t => t.Name).ToList(),
-                AllowedUserEmails = template.AllowedUsers.Select(ta => ta.User.Email).ToList(),
+                AllowedUserEmails = template.AllowedUsers.Select(ta => ta.User?.Email).Where(e => e != null).ToList(),
                 Questions = template.Questions
                     .OrderBy(q => q.Position)
                     .Select(q => new QuestionViewModel
@@ -172,6 +174,7 @@ namespace FormBuilder.Controllers
                 var template = await _context.Templates
                     .Include(t => t.Tags)
                     .Include(t => t.AllowedUsers)
+                        .ThenInclude(ta => ta.User)
                     .Include(t => t.Questions)
                         .ThenInclude(q => q.Options)
                     .FirstOrDefaultAsync(t => t.Id == id);
@@ -187,9 +190,9 @@ namespace FormBuilder.Controllers
                 template.IsPublic = model.IsPublic;
                 template.UpdatedDate = DateTime.UtcNow;
 
-                // Update tags
+                // Update tags - filter empty/null
                 var existingTags = template.Tags.ToList();
-                var newTags = model.Tags.Distinct().ToList();
+                var newTags = model.Tags?.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct().ToList() ?? new List<string>();
 
                 // Remove tags not in new list
                 foreach (var tag in existingTags.Where(t => !newTags.Contains(t.Name)))
@@ -201,16 +204,17 @@ namespace FormBuilder.Controllers
 
                 // Update allowed users if template is not public
                 var existingAccesses = template.AllowedUsers.ToList();
-                var newUserEmails = model.IsPublic ? new List<string>() : model.AllowedUserEmails.Distinct().ToList();
+                var newUserEmails = model.IsPublic ? new List<string>() :
+                    model.AllowedUserEmails?.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList() ?? new List<string>();
 
                 // Remove accesses not in new list
-                foreach (var access in existingAccesses.Where(a => !newUserEmails.Contains(a.User.Email)))
+                foreach (var access in existingAccesses.Where(a => !newUserEmails.Contains(a.User?.Email)))
                     _context.TemplateAccesses.Remove(access);
 
                 // Add new accesses
                 if (!model.IsPublic)
                 {
-                    foreach (var email in newUserEmails.Where(e => !existingAccesses.Any(a => a.User.Email == e)))
+                    foreach (var email in newUserEmails.Where(e => !existingAccesses.Any(a => a.User?.Email == e)))
                     {
                         var allowedUser = await _userManager.FindByEmailAsync(email);
                         if (allowedUser != null)
@@ -222,13 +226,15 @@ namespace FormBuilder.Controllers
                 var existingQuestions = template.Questions.ToList();
 
                 // Remove questions not in new list
-                foreach (var question in existingQuestions.Where(q => !model.Questions.Any(mq => mq.Id == q.Id)))
+                foreach (var question in existingQuestions.Where(q => !model.Questions?.Any(mq => mq.Id == q.Id) ?? true))
                     _context.Questions.Remove(question);
 
                 // Update or add questions
-                for (int i = 0; i < model.Questions.Count; i++)
+                for (int i = 0; i < model.Questions?.Count; i++)
                 {
                     var questionModel = model.Questions[i];
+                    if (string.IsNullOrWhiteSpace(questionModel.Title)) continue;
+
                     var question = existingQuestions.FirstOrDefault(q => q.Id == questionModel.Id);
 
                     if (question == null)
@@ -247,7 +253,7 @@ namespace FormBuilder.Controllers
                     if (question.Type == QuestionType.MultipleChoice)
                     {
                         var existingOptions = question.Options.ToList();
-                        var newOptions = questionModel.Options.ToList();
+                        var newOptions = questionModel.Options?.Where(o => !string.IsNullOrWhiteSpace(o)).ToList() ?? new List<string>();
 
                         // Remove options not in new list
                         foreach (var option in existingOptions.Where(o => !newOptions.Contains(o.Value)))
@@ -285,11 +291,27 @@ namespace FormBuilder.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
-            var template = await _context.Templates.FindAsync(id);
+            var template = await _context.Templates
+                .Include(t => t.Tags)
+                .Include(t => t.AllowedUsers)
+                .Include(t => t.Questions)
+                    .ThenInclude(q => q.Options)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
             if (template == null) return NotFound();
 
             var user = await _userManager.GetUserAsync(User);
             if (template.UserId != user.Id && !User.IsInRole("Admin")) return Forbid();
+
+            // Удаляем вручную связанные сущности
+            _context.TemplateTags.RemoveRange(template.Tags);
+            _context.TemplateAccesses.RemoveRange(template.AllowedUsers);
+
+            foreach (var question in template.Questions)
+            {
+                _context.Options.RemoveRange(question.Options);
+            }
+            _context.Questions.RemoveRange(template.Questions);
 
             _context.Templates.Remove(template);
             await _context.SaveChangesAsync();
@@ -300,6 +322,9 @@ namespace FormBuilder.Controllers
         [HttpGet]
         public async Task<IActionResult> SearchUsers(string term)
         {
+            if (string.IsNullOrWhiteSpace(term))
+                return Json(Enumerable.Empty<string>());
+
             var users = await _userManager.Users
                 .Where(u => u.Email.Contains(term) || u.UserName.Contains(term))
                 .Take(10)
@@ -312,6 +337,9 @@ namespace FormBuilder.Controllers
         [HttpGet]
         public async Task<IActionResult> SearchTags(string term)
         {
+            if (string.IsNullOrWhiteSpace(term))
+                return Json(Enumerable.Empty<string>());
+
             var tags = await _context.TemplateTags
                 .Where(t => t.Name.Contains(term))
                 .Select(t => t.Name)

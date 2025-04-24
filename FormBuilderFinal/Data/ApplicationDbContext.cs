@@ -39,7 +39,7 @@ namespace FormBuilder.Data
             builder.Entity<Template>()
                 .HasMany(t => t.AllowedUsers)
                 .WithOne(ta => ta.Template)
-                .OnDelete(DeleteBehavior.Restrict); // Изменили на Restrict
+                .OnDelete(DeleteBehavior.ClientCascade); // Changed to ClientCascade
 
             builder.Entity<Question>()
                 .HasMany(q => q.Options)
@@ -49,7 +49,7 @@ namespace FormBuilder.Data
             builder.Entity<TemplateAccess>()
                 .HasOne(ta => ta.User)
                 .WithMany()
-                .OnDelete(DeleteBehavior.Restrict); // Изменили на Restrict
+                .OnDelete(DeleteBehavior.ClientCascade); // Changed to ClientCascade
         }
     }
 }

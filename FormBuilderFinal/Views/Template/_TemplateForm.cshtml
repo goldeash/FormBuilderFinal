@@ -49,12 +49,15 @@
         <div id="allowedUsersContainer" class="mb-3" style="@(Model.IsPublic ? "display: none;" : "")">
             <label class="form-label">Allowed Users</label>
             <div id="allowedUsersList">
-                @for (int i = 0; i < Model.AllowedUserEmails.Count; i++)
+                @for (int i = 0; i < Model.AllowedUserEmails?.Count; i++)
                 {
-                    <div class="input-group mb-2">
-                        <input name="AllowedUserEmails" value="@Model.AllowedUserEmails[i]" class="form-control user-email" />
-                        <button type="button" class="btn btn-outline-danger remove-user">Remove</button>
-                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.AllowedUserEmails[i]))
+                    {
+                        <div class="input-group mb-2">
+                            <input name="AllowedUserEmails" value="@Model.AllowedUserEmails[i]" class="form-control user-email" />
+                            <button type="button" class="btn btn-outline-danger remove-user">Remove</button>
+                        </div>
+                    }
                 }
             </div>
             <button type="button" id="addUserBtn" class="btn btn-sm btn-outline-primary">Add User</button>
@@ -63,12 +66,15 @@
         <div class="mb-3">
             <label class="form-label">Tags</label>
             <div id="tagsList">
-                @for (int i = 0; i < Model.Tags.Count; i++)
+                @for (int i = 0; i < Model.Tags?.Count; i++)
                 {
-                    <div class="input-group mb-2">
-                        <input name="Tags" value="@Model.Tags[i]" class="form-control tag-input" />
-                        <button type="button" class="btn btn-outline-danger remove-tag">Remove</button>
-                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Tags[i]))
+                    {
+                        <div class="input-group mb-2">
+                            <input name="Tags" value="@Model.Tags[i]" class="form-control tag-input" />
+                            <button type="button" class="btn btn-outline-danger remove-tag">Remove</button>
+                        </div>
+                    }
                 }
             </div>
             <button type="button" id="addTagBtn" class="btn btn-sm btn-outline-primary">Add Tag</button>
@@ -83,7 +89,7 @@
     </div>
     <div class="card-body">
         <div id="questionsContainer">
-            @for (int i = 0; i < Model.Questions.Count; i++)
+            @for (int i = 0; i < Model.Questions?.Count; i++)
             {
                 <div class="question-card card mb-3" data-index="@i">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -124,7 +130,7 @@
                         <div class="options-container" style="@(Model.Questions[i].Type == "MultipleChoice" ? "" : "display: none;")">
                             <label class="form-label">Options</label>
                             <div class="options-list mb-2">
-                                @for (int j = 0; j < Model.Questions[i].Options.Count; j++)
+                                @for (int j = 0; j < Model.Questions[i].Options?.Count; j++)
                                 {
                                     <div class="input-group mb-2">
                                         <input name="Questions[@i].Options" value="@Model.Questions[i].Options[j]" class="form-control" />
@@ -140,3 +146,173 @@
         </div>
     </div>
 </div>
+
+<script>
+    $(document).ready(function() {
+        // Handle question type change
+        $(document).on('change', '.question-type', function() {
+            const optionsContainer = $(this).closest('.card-body').find('.options-container');
+            if ($(this).val() === 'MultipleChoice') {
+                optionsContainer.show();
+            } else {
+                optionsContainer.hide();
+            }
+        });
+
+        // Add new question
+        $('#addQuestionBtn').click(function() {
+            const index = $('.question-card').length;
+            const newQuestion = `
+                <div class="question-card card mb-3" data-index="${index}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Question ${index + 1}</h5>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-question">Remove</button>
+                    </div>
+                    <div class="card-body">
+                        <input type="hidden" name="Questions[${index}].Id" value="" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Question Type</label>
+                            <select name="Questions[${index}].Type" class="form-select question-type">
+                                <option value="SingleLineText" selected>Single Line Text</option>
+                                <option value="MultiLineText">Multi Line Text</option>
+                                <option value="Integer">Integer</option>
+                                <option value="Checkbox">Checkbox</option>
+                                <option value="MultipleChoice">Multiple Choice</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Question Text</label>
+                            <input name="Questions[${index}].Title" class="form-control" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description (optional)</label>
+                            <input name="Questions[${index}].Description" class="form-control" />
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="Questions[${index}].ShowInTable" value="true" class="form-check-input" />
+                            <label class="form-check-label">Show in results table</label>
+                        </div>
+
+                        <div class="options-container" style="display: none;">
+                            <label class="form-label">Options</label>
+                            <div class="options-list mb-2"></div>
+                            <button type="button" class="btn btn-sm btn-outline-primary add-option">Add Option</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('#questionsContainer').append(newQuestion);
+        });
+
+        // Remove question
+        $(document).on('click', '.remove-question', function() {
+            $(this).closest('.question-card').remove();
+            renumberQuestions();
+        });
+
+        // Add option to question
+        $(document).on('click', '.add-option', function() {
+            const optionsList = $(this).siblings('.options-list');
+            const questionIndex = $(this).closest('.question-card').data('index');
+            const optionIndex = optionsList.children().length;
+            const newOption = `
+                <div class="input-group mb-2">
+                    <input name="Questions[${questionIndex}].Options" class="form-control" />
+                    <button type="button" class="btn btn-outline-danger remove-option">Remove</button>
+                </div>
+            `;
+            optionsList.append(newOption);
+        });
+
+        // Remove option
+        $(document).on('click', '.remove-option', function() {
+            $(this).closest('.input-group').remove();
+        });
+
+        // Toggle allowed users container
+        $('#IsPublic').change(function() {
+            if ($(this).is(':checked')) {
+                $('#allowedUsersContainer').hide();
+            } else {
+                $('#allowedUsersContainer').show();
+            }
+        });
+
+        // Add user email
+        $('#addUserBtn').click(function() {
+            const newUser = `
+                <div class="input-group mb-2">
+                    <input name="AllowedUserEmails" class="form-control user-email" />
+                    <button type="button" class="btn btn-outline-danger remove-user">Remove</button>
+                </div>
+            `;
+            $('#allowedUsersList').append(newUser);
+        });
+
+        // Remove user email
+        $(document).on('click', '.remove-user', function() {
+            $(this).closest('.input-group').remove();
+        });
+
+        // Add tag
+        $('#addTagBtn').click(function() {
+            const newTag = `
+                <div class="input-group mb-2">
+                    <input name="Tags" class="form-control tag-input" />
+                    <button type="button" class="btn btn-outline-danger remove-tag">Remove</button>
+                </div>
+            `;
+            $('#tagsList').append(newTag);
+        });
+
+        // Remove tag
+        $(document).on('click', '.remove-tag', function() {
+            $(this).closest('.input-group').remove();
+        });
+
+        // Auto-complete for user emails
+        $(document).on('focus', '.user-email', function() {
+            $(this).autocomplete({
+                source: function(request, response) {
+                    $.getJSON('@Url.Action("SearchUsers", "Template")', { term: request.term }, function(data) {
+                        response(data);
+                    });
+                },
+                minLength: 2
+            });
+        });
+
+        // Auto-complete for tags
+        $(document).on('focus', '.tag-input', function() {
+            $(this).autocomplete({
+                source: function(request, response) {
+                    $.getJSON('@Url.Action("SearchTags", "Template")', { term: request.term }, function(data) {
+                        response(data);
+                    });
+                },
+                minLength: 1
+            });
+        });
+
+        // Renumber questions after deletion
+        function renumberQuestions() {
+            $('.question-card').each(function(index) {
+                $(this).data('index', index);
+                $(this).find('.card-header h5').text(`Question ${index + 1}`);
+
+                // Update all input names with new index
+                $(this).find('input, select').each(function() {
+                    const name = $(this).attr('name');
+                    if (name) {
+                        const newName = name.replace(/Questions\[\d+\]/, `Questions[${index}]`);
+                        $(this).attr('name', newName);
+                    }
+                });
+            });
+        }
+    });
+</script>
