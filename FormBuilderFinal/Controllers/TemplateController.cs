@@ -336,23 +336,53 @@ namespace FormBuilder.Controllers
                     .ThenInclude(q => q.Options)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
-            if (template == null) return NotFound();
+            if (template == null)
+            {
+                return NotFound();
+            }
 
             var user = await _userManager.GetUserAsync(User);
-            if (template.UserId != user.Id && !User.IsInRole("Admin")) return Forbid();
+            if (template.UserId != user.Id && !User.IsInRole("Admin"))
+            {
+                return Forbid();
+            }
 
-            // Удаляем вручную связанные сущности
+            // Сначала удаляем все ответы, связанные с формами этого шаблона
+            var forms = await _context.Forms
+                .Where(f => f.TemplateId == id)
+                .Include(f => f.Answers)
+                .ToListAsync();
+
+            foreach (var form in forms)
+            {
+                _context.Answers.RemoveRange(form.Answers);
+            }
+            _context.Forms.RemoveRange(forms);
+
+            // Удаляем все связанные данные шаблона
             _context.TemplateTags.RemoveRange(template.Tags);
             _context.TemplateAccesses.RemoveRange(template.AllowedUsers);
 
+            // Удаляем все опции вопросов
             foreach (var question in template.Questions)
             {
                 _context.Options.RemoveRange(question.Options);
             }
             _context.Questions.RemoveRange(template.Questions);
 
+            // Удаляем сам шаблон
             _context.Templates.Remove(template);
-            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                // Логируем ошибку
+                Console.WriteLine($"Error deleting template: {ex.Message}");
+                return RedirectToAction("ViewTemplate", new { id, error = "Failed to delete template due to database constraints" });
+            }
 
             return RedirectToAction("Index");
         }
