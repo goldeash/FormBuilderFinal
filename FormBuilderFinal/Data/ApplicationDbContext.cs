@@ -1,4 +1,5 @@
-﻿using FormBuilder.Models;
+﻿// Data/ApplicationDbContext.cs
+using FormBuilder.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,8 @@ namespace FormBuilder.Data
         public DbSet<Option> Options { get; set; }
         public DbSet<TemplateTag> TemplateTags { get; set; }
         public DbSet<TemplateAccess> TemplateAccesses { get; set; }
+        public DbSet<Form> Forms { get; set; }
+        public DbSet<Answer> Answers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -39,7 +42,7 @@ namespace FormBuilder.Data
             builder.Entity<Template>()
                 .HasMany(t => t.AllowedUsers)
                 .WithOne(ta => ta.Template)
-                .OnDelete(DeleteBehavior.ClientCascade); // Changed to ClientCascade
+                .OnDelete(DeleteBehavior.ClientCascade);
 
             builder.Entity<Question>()
                 .HasMany(q => q.Options)
@@ -49,7 +52,27 @@ namespace FormBuilder.Data
             builder.Entity<TemplateAccess>()
                 .HasOne(ta => ta.User)
                 .WithMany()
-                .OnDelete(DeleteBehavior.ClientCascade); // Changed to ClientCascade
+                .OnDelete(DeleteBehavior.ClientCascade);
+
+            builder.Entity<Form>()
+                .HasOne(f => f.Template)
+                .WithMany()
+                .OnDelete(DeleteBehavior.ClientCascade);
+
+            builder.Entity<Form>()
+                .HasOne(f => f.User)
+                .WithMany()
+                .OnDelete(DeleteBehavior.ClientCascade);
+
+            builder.Entity<Answer>()
+                .HasOne(a => a.Form)
+                .WithMany(f => f.Answers)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Answer>()
+                .HasOne(a => a.Question)
+                .WithMany()
+                .OnDelete(DeleteBehavior.ClientCascade);
         }
     }
 }

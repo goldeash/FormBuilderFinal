@@ -1,0 +1,163 @@
+﻿@* Views/Template/View.cshtml *@
+@using System.Security.Claims
+@using FormBuilder.Models
+@model FormBuilder.Models.Template
+
+@{
+    ViewData["Title"] = Model.Title;
+    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    var isAuthorized = User.IsInRole("Admin") || Model.UserId == currentUserId;
+    var canFillForm = User.Identity.IsAuthenticated &&
+                     (Model.IsPublic ||
+                      Model.AllowedUsers.Any(au => au.UserId == currentUserId) ||
+                      Model.UserId == currentUserId);
+    var activeTab = ViewBag.ActiveTab ?? "details";
+}
+
+<div class="container mt-4">
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteTemplateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Template Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this template? All related data will be permanently removed.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="deleteTemplateForm" method="post" asp-action="Delete">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2>@Model.Title</h2>
+            @if (isAuthorized)
+            {
+                <div class="btn-group">
+                    <a asp-action="Edit" asp-route-id="@Model.Id"
+                       class="btn btn-sm btn-outline-primary">Edit</a>
+                    <button type="button" class="btn btn-sm btn-outline-danger delete-template-btn"
+                            data-bs-toggle="modal" data-bs-target="#deleteTemplateModal">
+                        Delete
+                    </button>
+                </div>
+            }
+        </div>
+
+        <div class="card-body">
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item">
+                    <a class="nav-link @(activeTab == "details" ? "active" : "")"
+                       asp-action="View" asp-route-id="@Model.Id" asp-route-tab="details">Details</a>
+                </li>
+                @if (isAuthorized)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link @(activeTab == "responses" ? "active" : "")"
+                           asp-action="View" asp-route-id="@Model.Id" asp-route-tab="responses">Responses</a>
+                    </li>
+                }
+            </ul>
+
+            @if (activeTab == "details")
+            {
+                <div class="mb-3">
+                    <h5>Description</h5>
+                    <p>@Model.Description</p>
+                </div>
+
+                <div class="mb-3">
+                    <h5>Details</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Topic:</strong> @Model.Topic</li>
+                        <li><strong>Created by:</strong> @Model.User.Email</li>
+                        <li><strong>Created:</strong> @Model.CreatedDate.ToString("g")</li>
+                        <li><strong>Last updated:</strong> @Model.UpdatedDate.ToString("g")</li>
+                        <li><strong>Access:</strong> @(Model.IsPublic ? "Public" : "Restricted")</li>
+                    </ul>
+                </div>
+
+                @if (Model.Tags.Any())
+                {
+                    <div class="mb-3">
+                        <h5>Tags</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var tag in Model.Tags)
+                            {
+                                <span class="badge bg-secondary">@tag.Name</span>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else if (activeTab == "responses" && isAuthorized)
+            {
+                var responses = ViewBag.Responses as List<Form>;
+
+                if (responses == null || !responses.Any())
+                {
+                    <div class="alert alert-info">
+                        No responses yet.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Submitted</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var response in responses)
+                                {
+                                    <tr>
+                                        <td>@response.User.Email</td>
+                                        <td>@response.CreatedDate.ToString("g")</td>
+                                        <td>
+                                            <a asp-controller="Form" asp-action="ViewForm" asp-route-id="@response.Id"
+                                               class="btn btn-sm btn-outline-primary">View</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
+        @if (canFillForm)
+        {
+            <a asp-controller="Form" asp-action="Fill" asp-route-templateId="@Model.Id"
+               class="btn btn-primary">Fill Form</a>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Handle delete template button click
+            $('.delete-template-btn').click(function() {
+                $('#deleteTemplateModal').modal('show');
+            });
+        });
+    </script>
+}

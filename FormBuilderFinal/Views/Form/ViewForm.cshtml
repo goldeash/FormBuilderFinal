@@ -1,0 +1,52 @@
+﻿@using FormBuilder.Models
+@model FormBuilder.Models.Form
+
+@{
+    ViewData["Title"] = "Form Submission";
+}
+
+<div class="container mt-4">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>@Model.Template.Title</h2>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <h5>Submitted by: @Model.User.Email</h5>
+                <p class="text-muted">Submitted on: @Model.CreatedDate.ToString("g")</p>
+            </div>
+            <hr />
+
+            @foreach (var answer in Model.Answers.OrderBy(a => a.Question.Position))
+            {
+                <div class="mb-4 p-3 border rounded">
+                    <h5>@answer.Question.Title</h5>
+                    @if (!string.IsNullOrEmpty(answer.Question.Description))
+                    {
+                        <p class="text-muted">@answer.Question.Description</p>
+                    }
+
+                    <div class="mt-2">
+                        @if (answer.Question.Type == QuestionType.MultipleChoice)
+                        {
+                            <div class="form-control-plaintext">
+                                @answer.Value
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="form-control-plaintext">
+                                @answer.Value
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <a asp-action="View" asp-controller="Template" asp-route-id="@Model.TemplateId"
+                   class="btn btn-outline-secondary">Back to Template</a>
+            </div>
+        </div>
+    </div>
+</div>

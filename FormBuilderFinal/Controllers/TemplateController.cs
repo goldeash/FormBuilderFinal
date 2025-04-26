@@ -287,6 +287,44 @@ namespace FormBuilder.Controllers
             return View(model);
         }
 
+        [HttpGet]
+        [Route("Template/View/{id:int}")]
+        public async Task<IActionResult> ViewTemplate(int id, string tab = "details")
+        {
+            var template = await _context.Templates
+                .Include(t => t.User)
+                .Include(t => t.Tags)
+                .Include(t => t.Questions)
+                    .ThenInclude(q => q.Options)
+                .Include(t => t.AllowedUsers)
+                    .ThenInclude(au => au.User)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (template == null)
+            {
+                return NotFound();
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var isAuthorized = User.IsInRole("Admin") || template.UserId == user?.Id;
+
+            ViewBag.IsAuthorized = isAuthorized;
+            ViewBag.ActiveTab = tab;
+
+            if (tab == "responses" && isAuthorized)
+            {
+                var responses = await _context.Forms
+                    .Include(f => f.User)
+                    .Where(f => f.TemplateId == id)
+                    .OrderByDescending(f => f.CreatedDate)
+                    .ToListAsync();
+
+                ViewBag.Responses = responses;
+            }
+
+            return View(template);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
