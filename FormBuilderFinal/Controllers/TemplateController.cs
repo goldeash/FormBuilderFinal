@@ -66,7 +66,7 @@ namespace FormBuilder.Controllers
                     UpdatedDate = DateTime.UtcNow
                 };
 
-                // Add tags - filter empty/null
+                // Add tags
                 foreach (var tagName in model.Tags?.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct() ?? Enumerable.Empty<string>())
                 {
                     template.Tags.Add(new TemplateTag { Name = tagName });
@@ -97,10 +97,10 @@ namespace FormBuilder.Controllers
                         Description = questionModel.Description ?? string.Empty,
                         Type = Enum.Parse<QuestionType>(questionModel.Type),
                         Position = i,
-                        ShowInTable = questionModel.ShowInTable
+                        ShowInTable = questionModel.ShowInTable,
+                        IsActive = questionModel.IsActive
                     };
 
-                    // Add options for multiple choice questions
                     if (question.Type == QuestionType.MultipleChoice)
                     {
                         foreach (var optionValue in questionModel.Options?.Where(o => !string.IsNullOrWhiteSpace(o)) ?? Enumerable.Empty<string>())
@@ -117,7 +117,6 @@ namespace FormBuilder.Controllers
 
                 return RedirectToAction("Index");
             }
-
             return View(model);
         }
 
@@ -156,6 +155,7 @@ namespace FormBuilder.Controllers
                         Type = q.Type.ToString(),
                         Position = q.Position,
                         ShowInTable = q.ShowInTable,
+                        IsActive = q.IsActive,
                         Options = q.Options.Select(o => o.Value).ToList()
                     }).ToList()
             };
@@ -221,7 +221,7 @@ namespace FormBuilder.Controllers
                 // Update questions
                 var existingQuestions = template.Questions.ToList();
 
-                // Remove only questions that have no answers
+                // Remove only questions that have no answers and not in new list
                 var questionsToRemove = existingQuestions
                     .Where(eq => !model.Questions.Any(mq => mq.Id == eq.Id))
                     .ToList();
@@ -232,7 +232,6 @@ namespace FormBuilder.Controllers
                     if (hasAnswers)
                     {
                         question.IsActive = false;
-                        question.Position = -1; // Move inactive questions to the end
                         continue;
                     }
 
@@ -254,7 +253,7 @@ namespace FormBuilder.Controllers
                         {
                             TemplateId = template.Id,
                             Position = i,
-                            IsActive = true
+                            IsActive = questionModel.IsActive
                         };
                         template.Questions.Add(question);
                     }
@@ -264,7 +263,7 @@ namespace FormBuilder.Controllers
                     question.Type = Enum.Parse<QuestionType>(questionModel.Type);
                     question.Position = i;
                     question.ShowInTable = questionModel.ShowInTable;
-                    question.IsActive = true;
+                    question.IsActive = questionModel.IsActive;
 
                     if (question.Type == QuestionType.MultipleChoice)
                     {
@@ -296,7 +295,6 @@ namespace FormBuilder.Controllers
 
                 return RedirectToAction("Index");
             }
-
             return View(model);
         }
 

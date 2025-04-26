@@ -21,6 +21,8 @@ namespace FormBuilder.ViewModels
 
         public bool ShowInTable { get; set; }
 
+        public bool IsActive { get; set; } = true;
+
         public List<string> Options { get; set; } = new List<string>();
     }
 }
