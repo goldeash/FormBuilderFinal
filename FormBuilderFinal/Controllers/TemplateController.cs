@@ -320,6 +320,30 @@ namespace FormBuilder.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> View(int id)
+        {
+            var template = await _context.Templates
+                .Include(t => t.User)
+                .Include(t => t.Tags)
+                .Include(t => t.Questions)
+                    .ThenInclude(q => q.Options)
+                .Include(t => t.AllowedUsers)
+                    .ThenInclude(au => au.User)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (template == null)
+            {
+                return NotFound();
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var isAuthorized = User.IsInRole("Admin") || template.UserId == user?.Id;
+
+            ViewBag.IsAuthorized = isAuthorized;
+            return View(template);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> SearchUsers(string term)
         {
             if (string.IsNullOrWhiteSpace(term))
