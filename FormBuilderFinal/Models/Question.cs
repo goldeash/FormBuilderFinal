@@ -34,6 +34,8 @@ namespace FormBuilder.Models
         [Required]
         public int TemplateId { get; set; }
 
+        public bool IsActive { get; set; } = true;
+
         [ForeignKey("TemplateId")]
         public virtual Template Template { get; set; }
 

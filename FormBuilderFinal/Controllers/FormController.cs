@@ -29,8 +29,9 @@ namespace FormBuilder.Controllers
         public async Task<IActionResult> Fill(int templateId)
         {
             var template = await _context.Templates
-                .Include(t => t.Questions)
-                    .ThenInclude(q => q.Options)
+                .Include(t => t.Questions
+                    .Where(q => q.IsActive))
+                .ThenInclude(q => q.Options)
                 .FirstOrDefaultAsync(t => t.Id == templateId);
 
             if (template == null)
@@ -60,7 +61,8 @@ namespace FormBuilder.Controllers
         public async Task<IActionResult> Fill(int templateId, FormInputModel model)
         {
             var template = await _context.Templates
-                .Include(t => t.Questions)
+                .Include(t => t.Questions
+                    .Where(q => q.IsActive))
                 .FirstOrDefaultAsync(t => t.Id == templateId);
 
             if (template == null)

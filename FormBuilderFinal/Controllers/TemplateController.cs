@@ -190,28 +190,24 @@ namespace FormBuilder.Controllers
                 template.IsPublic = model.IsPublic;
                 template.UpdatedDate = DateTime.UtcNow;
 
-                // Update tags - filter empty/null
+                // Update tags
                 var existingTags = template.Tags.ToList();
                 var newTags = model.Tags?.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct().ToList() ?? new List<string>();
 
-                // Remove tags not in new list
                 foreach (var tag in existingTags.Where(t => !newTags.Contains(t.Name)))
                     _context.TemplateTags.Remove(tag);
 
-                // Add new tags
                 foreach (var tagName in newTags.Where(t => !existingTags.Any(et => et.Name == t)))
                     template.Tags.Add(new TemplateTag { Name = tagName });
 
-                // Update allowed users if template is not public
+                // Update allowed users
                 var existingAccesses = template.AllowedUsers.ToList();
                 var newUserEmails = model.IsPublic ? new List<string>() :
                     model.AllowedUserEmails?.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList() ?? new List<string>();
 
-                // Remove accesses not in new list
                 foreach (var access in existingAccesses.Where(a => !newUserEmails.Contains(a.User?.Email)))
                     _context.TemplateAccesses.Remove(access);
 
-                // Add new accesses
                 if (!model.IsPublic)
                 {
                     foreach (var email in newUserEmails.Where(e => !existingAccesses.Any(a => a.User?.Email == e)))
@@ -225,9 +221,24 @@ namespace FormBuilder.Controllers
                 // Update questions
                 var existingQuestions = template.Questions.ToList();
 
-                // Remove questions not in new list
-                foreach (var question in existingQuestions.Where(q => !model.Questions?.Any(mq => mq.Id == q.Id) ?? true))
+                // Remove only questions that have no answers
+                var questionsToRemove = existingQuestions
+                    .Where(eq => !model.Questions.Any(mq => mq.Id == eq.Id))
+                    .ToList();
+
+                foreach (var question in questionsToRemove)
+                {
+                    var hasAnswers = await _context.Answers.AnyAsync(a => a.QuestionId == question.Id);
+                    if (hasAnswers)
+                    {
+                        question.IsActive = false;
+                        question.Position = -1; // Move inactive questions to the end
+                        continue;
+                    }
+
+                    _context.Options.RemoveRange(question.Options);
                     _context.Questions.Remove(question);
+                }
 
                 // Update or add questions
                 for (int i = 0; i < model.Questions?.Count; i++)
@@ -239,7 +250,12 @@ namespace FormBuilder.Controllers
 
                     if (question == null)
                     {
-                        question = new Question { TemplateId = template.Id, Position = i };
+                        question = new Question
+                        {
+                            TemplateId = template.Id,
+                            Position = i,
+                            IsActive = true
+                        };
                         template.Questions.Add(question);
                     }
 
@@ -248,24 +264,21 @@ namespace FormBuilder.Controllers
                     question.Type = Enum.Parse<QuestionType>(questionModel.Type);
                     question.Position = i;
                     question.ShowInTable = questionModel.ShowInTable;
+                    question.IsActive = true;
 
-                    // Update options for multiple choice questions
                     if (question.Type == QuestionType.MultipleChoice)
                     {
                         var existingOptions = question.Options.ToList();
                         var newOptions = questionModel.Options?.Where(o => !string.IsNullOrWhiteSpace(o)).ToList() ?? new List<string>();
 
-                        // Remove options not in new list
                         foreach (var option in existingOptions.Where(o => !newOptions.Contains(o.Value)))
                             _context.Options.Remove(option);
 
-                        // Add new options
                         foreach (var optionValue in newOptions.Where(o => !existingOptions.Any(eo => eo.Value == o)))
                             question.Options.Add(new Option { Value = optionValue });
                     }
                     else
                     {
-                        // Remove all options if question type changed
                         foreach (var option in question.Options.ToList())
                             _context.Options.Remove(option);
                     }
