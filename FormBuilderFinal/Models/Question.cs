@@ -9,7 +9,6 @@ namespace FormBuilder.Models
         SingleLineText,
         MultiLineText,
         Integer,
-        Checkbox,
         MultipleChoice
     }
 
