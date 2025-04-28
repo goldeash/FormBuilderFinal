@@ -1,5 +1,4 @@
-﻿@* Views/Template/View.cshtml *@
-@using System.Security.Claims
+﻿@using System.Security.Claims
 @using FormBuilder.Models
 @model FormBuilder.Models.Template
 
@@ -12,15 +11,17 @@
                       Model.AllowedUsers.Any(au => au.UserId == currentUserId) ||
                       Model.UserId == currentUserId);
     var activeTab = ViewBag.ActiveTab ?? "details";
+    var likesCount = Model.Likes?.Count ?? 0;
+    var hasLiked = Model.Likes?.Any(l => l.UserId == currentUserId) ?? false;
 }
 
 <div class="container mt-4">
     <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteTemplateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="deleteTemplateModal" tabindex="-1" aria-labelledby="deleteTemplateModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Confirm Template Deletion</h5>
+                    <h5 class="modal-title" id="deleteTemplateModalLabel">Confirm Template Deletion</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -46,8 +47,7 @@
                 <div class="btn-group">
                     <a asp-action="Edit" asp-route-id="@Model.Id"
                        class="btn btn-sm btn-outline-primary">Edit</a>
-                    <button type="button" class="btn btn-sm btn-outline-danger delete-template-btn"
-                            data-bs-toggle="modal" data-bs-target="#deleteTemplateModal">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteTemplateModal">
                         Delete
                     </button>
                 </div>
@@ -84,6 +84,19 @@
                         <li><strong>Created:</strong> @Model.CreatedDate.ToString("g")</li>
                         <li><strong>Last updated:</strong> @Model.UpdatedDate.ToString("g")</li>
                         <li><strong>Access:</strong> @(Model.IsPublic ? "Public" : "Restricted")</li>
+                        <li>
+                            <strong>Likes:</strong> @likesCount
+                            @if (User.Identity.IsAuthenticated)
+                            {
+                                <form asp-action="ToggleLike" method="post" class="d-inline">
+                                    <input type="hidden" name="templateId" value="@Model.Id" />
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm @(hasLiked ? "btn-danger" : "btn-outline-secondary")">
+                                        @(hasLiked ? "Unlike" : "Like")
+                                    </button>
+                                </form>
+                            }
+                        </li>
                     </ul>
                 </div>
 
@@ -97,6 +110,14 @@
                                 <span class="badge bg-secondary">@tag.Name</span>
                             }
                         </div>
+                    </div>
+                }
+
+                @if (canFillForm)
+                {
+                    <div class="d-flex justify-content-end mt-4">
+                        <a asp-controller="Form" asp-action="Fill" asp-route-templateId="@Model.Id"
+                           class="btn btn-primary">Fill Form</a>
                     </div>
                 }
             }
@@ -141,23 +162,53 @@
         </div>
     </div>
 
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-        <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
-        @if (canFillForm)
-        {
-            <a asp-controller="Form" asp-action="Fill" asp-route-templateId="@Model.Id"
-               class="btn btn-primary">Fill Form</a>
-        }
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Comments (@Model.Comments?.Count)</h4>
+        </div>
+        <div class="card-body">
+            @if (User.Identity.IsAuthenticated)
+            {
+                <form asp-action="AddComment" method="post" class="mb-4">
+                    <input type="hidden" name="templateId" value="@Model.Id" />
+                    <div class="d-flex gap-2">
+                        <textarea name="content" class="form-control" rows="2" placeholder="Add a comment..." required></textarea>
+                        <button type="submit" class="btn btn-primary btn-sm align-self-start">Comment</button>
+                    </div>
+                </form>
+            }
+            else
+            {
+                <div class="alert alert-info mb-4">
+                    Please <a asp-controller="Account" asp-action="Login">login</a> to post comments.
+                </div>
+            }
+
+            <div id="commentsContainer">
+                @foreach (var comment in Model.Comments?.OrderByDescending(c => c.CreatedDate) ?? Enumerable.Empty<Comment>())
+                {
+                    <div class="mb-3 p-3 border rounded">
+                        <div class="d-flex justify-content-between">
+                            <strong>@comment.User.Email</strong>
+                            <small class="text-muted">@comment.CreatedDate.ToString("g")</small>
+                        </div>
+                        <p class="mb-0">@comment.Content</p>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
         $(document).ready(function() {
-            // Handle delete template button click
-            $('.delete-template-btn').click(function() {
-                $('#deleteTemplateModal').modal('show');
-            });
+            // Инициализация модального окна при необходимости
+            if (document.getElementById('deleteTemplateModal')) {
+                var deleteModal = new bootstrap.Modal(document.getElementById('deleteTemplateModal'), {
+                    keyboard: false
+                });
+            }
         });
     </script>
 }

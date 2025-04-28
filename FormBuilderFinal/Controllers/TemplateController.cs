@@ -309,6 +309,9 @@ namespace FormBuilder.Controllers
                     .ThenInclude(q => q.Options)
                 .Include(t => t.AllowedUsers)
                     .ThenInclude(au => au.User)
+                .Include(t => t.Comments)
+                    .ThenInclude(c => c.User)
+                .Include(t => t.Likes)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (template == null)
@@ -420,6 +423,82 @@ namespace FormBuilder.Controllers
 
             ViewBag.IsAuthorized = isAuthorized;
             return View(template);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> AddComment(int templateId, string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return BadRequest("Comment cannot be empty");
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null || user.IsBlocked)
+            {
+                return Forbid();
+            }
+
+            var template = await _context.Templates.FindAsync(templateId);
+            if (template == null)
+            {
+                return NotFound();
+            }
+
+            var comment = new Comment
+            {
+                Content = content,
+                UserId = user.Id,
+                TemplateId = templateId,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            _context.Comments.Add(comment);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("View", new { id = templateId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> ToggleLike(int templateId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null || user.IsBlocked)
+            {
+                return Forbid();
+            }
+
+            var template = await _context.Templates.FindAsync(templateId);
+            if (template == null)
+            {
+                return NotFound();
+            }
+
+            var existingLike = await _context.Likes
+                .FirstOrDefaultAsync(l => l.UserId == user.Id && l.TemplateId == templateId);
+
+            if (existingLike != null)
+            {
+                _context.Likes.Remove(existingLike);
+            }
+            else
+            {
+                var like = new Like
+                {
+                    UserId = user.Id,
+                    TemplateId = templateId,
+                    CreatedDate = DateTime.UtcNow
+                };
+                _context.Likes.Add(like);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("View", new { id = templateId });
         }
 
         [HttpGet]

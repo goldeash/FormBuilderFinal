@@ -32,5 +32,7 @@ namespace FormBuilder.Models
         public virtual ICollection<TemplateTag> Tags { get; set; } = new List<TemplateTag>();
         public virtual ICollection<Question> Questions { get; set; } = new List<Question>();
         public virtual ICollection<TemplateAccess> AllowedUsers { get; set; } = new List<TemplateAccess>();
+        public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+        public virtual ICollection<Like> Likes { get; set; } = new List<Like>();
     }
 }

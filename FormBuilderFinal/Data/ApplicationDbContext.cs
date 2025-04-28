@@ -1,5 +1,4 @@
-﻿// Data/ApplicationDbContext.cs
-using FormBuilder.Models;
+﻿using FormBuilder.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +18,8 @@ namespace FormBuilder.Data
         public DbSet<TemplateAccess> TemplateAccesses { get; set; }
         public DbSet<Form> Forms { get; set; }
         public DbSet<Answer> Answers { get; set; }
+        public DbSet<Comment> Comments { get; set; }
+        public DbSet<Like> Likes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -43,6 +44,16 @@ namespace FormBuilder.Data
                 .HasMany(t => t.AllowedUsers)
                 .WithOne(ta => ta.Template)
                 .OnDelete(DeleteBehavior.ClientCascade);
+
+            builder.Entity<Template>()
+                .HasMany(t => t.Comments)
+                .WithOne(c => c.Template)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Template>()
+                .HasMany(t => t.Likes)
+                .WithOne(l => l.Template)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Question>()
                 .HasMany(q => q.Options)
@@ -73,6 +84,21 @@ namespace FormBuilder.Data
                 .HasOne(a => a.Question)
                 .WithMany()
                 .OnDelete(DeleteBehavior.ClientCascade);
+
+            builder.Entity<Comment>()
+                .HasOne(c => c.User)
+                .WithMany()
+                .OnDelete(DeleteBehavior.ClientCascade);
+
+            builder.Entity<Like>()
+                .HasOne(l => l.User)
+                .WithMany()
+                .OnDelete(DeleteBehavior.ClientCascade);
+
+            // Ensure each user can like a template only once
+            builder.Entity<Like>()
+                .HasIndex(l => new { l.UserId, l.TemplateId })
+                .IsUnique();
         }
     }
 }
