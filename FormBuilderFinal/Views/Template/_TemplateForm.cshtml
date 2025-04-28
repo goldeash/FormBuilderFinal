@@ -22,10 +22,20 @@
         <div class="mb-3">
             <label asp-for="Topic" class="form-label"></label>
             <select asp-for="Topic" class="form-select">
-                <option value="Education">Education</option>
-                <option value="Quiz">Quiz</option>
-                <option value="Survey">Survey</option>
-                <option value="Other">Other</option>
+                @{
+                    var topics = new List<string> { "Education", "Quiz", "Survey", "Other" };
+                    foreach (var topic in topics)
+                    {
+                        if (Model.Topic == topic)
+                        {
+                            <option value="@topic" selected>@topic</option>
+                        }
+                        else
+                        {
+                            <option value="@topic">@topic</option>
+                        }
+                    }
+                }
             </select>
             <span asp-validation-for="Topic" class="text-danger"></span>
         </div>
@@ -34,6 +44,40 @@
             <input asp-for="IsPublic" class="form-check-input" />
             <label asp-for="IsPublic" class="form-check-label"></label>
             <span asp-validation-for="IsPublic" class="text-danger"></span>
+        </div>
+
+        <div id="allowedUsersContainer" class="mb-3" style="@(Model.IsPublic ? "display: none;" : "")">
+            <label class="form-label">Allowed Users</label>
+            <div id="allowedUsersList">
+                @for (int i = 0; i < Model.AllowedUserEmails?.Count; i++)
+                {
+                    @if (!string.IsNullOrWhiteSpace(Model.AllowedUserEmails[i]))
+                    {
+                        <div class="input-group mb-2">
+                            <input name="AllowedUserEmails" value="@Model.AllowedUserEmails[i]" class="form-control user-email" />
+                            <button type="button" class="btn btn-outline-danger remove-user">Remove</button>
+                        </div>
+                    }
+                }
+            </div>
+            <button type="button" id="addUserBtn" class="btn btn-sm btn-outline-primary">Add User</button>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Tags</label>
+            <div id="tagsList">
+                @for (int i = 0; i < Model.Tags?.Count; i++)
+                {
+                    @if (!string.IsNullOrWhiteSpace(Model.Tags[i]))
+                    {
+                        <div class="input-group mb-2">
+                            <input name="Tags" value="@Model.Tags[i]" class="form-control tag-input" />
+                            <button type="button" class="btn btn-outline-danger remove-tag">Remove</button>
+                        </div>
+                    }
+                }
+            </div>
+            <button type="button" id="addTagBtn" class="btn btn-sm btn-outline-primary">Add Tag</button>
         </div>
     </div>
 </div>
@@ -55,18 +99,13 @@
                     <div class="card-body">
                         <input type="hidden" name="Questions[@i].Id" value="@Model.Questions[i].Id" />
 
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" name="Questions[@i].IsActive" value="true"
-                                   checked="@Model.Questions[i].IsActive" class="form-check-input" />
-                            <label class="form-check-label">Active</label>
-                        </div>
-
                         <div class="mb-3">
                             <label class="form-label">Question Type</label>
                             <select name="Questions[@i].Type" class="form-select question-type">
                                 <option value="SingleLineText" selected="@(Model.Questions[i].Type == "SingleLineText")">Single Line Text</option>
                                 <option value="MultiLineText" selected="@(Model.Questions[i].Type == "MultiLineText")">Multi Line Text</option>
                                 <option value="Integer" selected="@(Model.Questions[i].Type == "Integer")">Integer</option>
+                                <option value="Checkbox" selected="@(Model.Questions[i].Type == "Checkbox")">Checkbox</option>
                                 <option value="MultipleChoice" selected="@(Model.Questions[i].Type == "MultipleChoice")">Multiple Choice</option>
                             </select>
                         </div>
@@ -132,18 +171,13 @@
                     <div class="card-body">
                         <input type="hidden" name="Questions[${index}].Id" value="" />
 
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" name="Questions[${index}].IsActive" value="true"
-                                   checked class="form-check-input" />
-                            <label class="form-check-label">Active</label>
-                        </div>
-
                         <div class="mb-3">
                             <label class="form-label">Question Type</label>
                             <select name="Questions[${index}].Type" class="form-select question-type">
                                 <option value="SingleLineText" selected>Single Line Text</option>
                                 <option value="MultiLineText">Multi Line Text</option>
                                 <option value="Integer">Integer</option>
+                                <option value="Checkbox">Checkbox</option>
                                 <option value="MultipleChoice">Multiple Choice</option>
                             </select>
                         </div>
@@ -199,12 +233,78 @@
             $(this).closest('.input-group').remove();
         });
 
+        // Toggle allowed users container
+        $('#IsPublic').change(function() {
+            if ($(this).is(':checked')) {
+                $('#allowedUsersContainer').hide();
+            } else {
+                $('#allowedUsersContainer').show();
+            }
+        });
+
+        // Add user email
+        $('#addUserBtn').click(function() {
+            const newUser = `
+                <div class="input-group mb-2">
+                    <input name="AllowedUserEmails" class="form-control user-email" />
+                    <button type="button" class="btn btn-outline-danger remove-user">Remove</button>
+                </div>
+            `;
+            $('#allowedUsersList').append(newUser);
+        });
+
+        // Remove user email
+        $(document).on('click', '.remove-user', function() {
+            $(this).closest('.input-group').remove();
+        });
+
+        // Add tag
+        $('#addTagBtn').click(function() {
+            const newTag = `
+                <div class="input-group mb-2">
+                    <input name="Tags" class="form-control tag-input" />
+                    <button type="button" class="btn btn-outline-danger remove-tag">Remove</button>
+                </div>
+            `;
+            $('#tagsList').append(newTag);
+        });
+
+        // Remove tag
+        $(document).on('click', '.remove-tag', function() {
+            $(this).closest('.input-group').remove();
+        });
+
+        // Auto-complete for user emails
+        $(document).on('focus', '.user-email', function() {
+            $(this).autocomplete({
+                source: function(request, response) {
+                    $.getJSON('@Url.Action("SearchUsers", "Template")', { term: request.term }, function(data) {
+                        response(data);
+                    });
+                },
+                minLength: 2
+            });
+        });
+
+        // Auto-complete for tags
+        $(document).on('focus', '.tag-input', function() {
+            $(this).autocomplete({
+                source: function(request, response) {
+                    $.getJSON('@Url.Action("SearchTags", "Template")', { term: request.term }, function(data) {
+                        response(data);
+                    });
+                },
+                minLength: 1
+            });
+        });
+
         // Renumber questions after deletion
         function renumberQuestions() {
             $('.question-card').each(function(index) {
                 $(this).data('index', index);
                 $(this).find('.card-header h5').text(`Question ${index + 1}`);
 
+                // Update all input names with new index
                 $(this).find('input, select').each(function() {
                     const name = $(this).attr('name');
                     if (name) {
