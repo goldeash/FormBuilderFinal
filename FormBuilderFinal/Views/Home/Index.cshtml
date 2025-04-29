@@ -1,7 +1,8 @@
 ﻿@model IEnumerable<FormBuilder.Models.Template>
 
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = ViewBag.SearchQuery != null ?
+        $"Search Results for '{ViewBag.SearchQuery}'" : "Home Page";
 }
 
 <div class="hero-section text-center py-5 bg-light rounded-3 mb-4">
@@ -24,12 +25,22 @@
 </div>
 
 <div class="container mt-4">
-    <h2 class="mb-4">Available Forms</h2>
+    @if (ViewBag.SearchQuery != null)
+    {
+        <div class="alert alert-info mb-4">
+            Search results for: <strong>@ViewBag.SearchQuery</strong>
+            <a asp-action="Index" class="float-end">Clear search</a>
+        </div>
+    }
+
+    <h2 class="mb-4">@(ViewBag.SearchQuery != null ? "Search Results" : "Available Forms")</h2>
 
     @if (!Model.Any())
     {
         <div class="alert alert-info">
-            No forms available yet.
+            @(ViewBag.SearchQuery != null ?
+                "No forms found matching your search criteria." :
+                "No forms available yet.")
         </div>
     }
     else

@@ -139,3 +139,39 @@ body {
         padding: 2rem 1rem;
     }
 }
+
+.search-highlight {
+    background-color: #fff59d;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+.search-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.search-results-count {
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+    margin-bottom: 1rem;
+}
+
+.search-result-item {
+    transition: all 0.2s ease;
+}
+
+    .search-result-item:hover {
+        transform: translateX(5px);
+    }
+
+@media (max-width: 768px) {
+    .navbar-collapse .d-flex {
+        margin-top: 1rem;
+        width: 100%;
+    }
+
+    .search-container {
+        width: 100%;
+    }
+}

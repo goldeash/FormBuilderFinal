@@ -17,7 +17,15 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1"></ul>
+                    <form asp-controller="Home" asp-action="Search" method="get" class="d-flex me-3 flex-grow-1">
+                        <div class="input-group">
+                            <input type="text" name="query" class="form-control" placeholder="Search templates..."
+                                   aria-label="Search" aria-describedby="search-button" required>
+                            <button class="btn btn-outline-primary" type="submit" id="search-button">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </form>
                     <ul class="navbar-nav">
                         @if (User.Identity.IsAuthenticated)
                         {

@@ -29,7 +29,6 @@ namespace FormBuilder.Data
                 .Property(u => u.IsBlocked)
                 .HasDefaultValue(false);
 
-            // Configure relationships
             builder.Entity<Template>()
                 .HasMany(t => t.Questions)
                 .WithOne(q => q.Template)
@@ -95,10 +94,21 @@ namespace FormBuilder.Data
                 .WithMany()
                 .OnDelete(DeleteBehavior.ClientCascade);
 
-            // Ensure each user can like a template only once
             builder.Entity<Like>()
                 .HasIndex(l => new { l.UserId, l.TemplateId })
                 .IsUnique();
+
+            builder.Entity<Template>()
+                .HasIndex(t => new { t.Title, t.Description })
+                .HasAnnotation("SqlServer:FullTextIndex", true);
+
+            builder.Entity<TemplateTag>()
+                .HasIndex(t => t.Name)
+                .HasAnnotation("SqlServer:FullTextIndex", true);
+
+            builder.Entity<Comment>()
+                .HasIndex(c => c.Content)
+                .HasAnnotation("SqlServer:FullTextIndex", true);
         }
     }
 }
