@@ -313,34 +313,14 @@ namespace FormBuilder.Controllers
                 return NotFound();
             }
 
-            if (!User.Identity.IsAuthenticated)
-            {
-                if (!template.IsPublic)
-                {
-                    return RedirectToAction("Login", "Account");
-                }
-
-                ViewBag.IsAuthorized = false;
-                ViewBag.ActiveTab = "details";
-                return View(template);
-            }
-
             var user = await _userManager.GetUserAsync(User);
-            if (user == null || user.IsBlocked)
-            {
-                return Forbid();
-            }
+            var isAuthorized = User.IsInRole("Admin") || template.UserId == user?.Id;
+            var hasAccess = User.IsInRole("Admin") || template.IsPublic ||
+                           template.AllowedUsers.Any(au => au.UserId == user?.Id) ||
+                           template.UserId == user?.Id;
 
-            if (!template.IsPublic &&
-                !template.AllowedUsers.Any(au => au.UserId == user.Id) &&
-                template.UserId != user.Id &&
-                !User.IsInRole("Admin"))
-            {
-                return Forbid();
-            }
-
-            var isAuthorized = User.IsInRole("Admin") || template.UserId == user.Id;
             ViewBag.IsAuthorized = isAuthorized;
+            ViewBag.HasAccess = hasAccess;
             ViewBag.ActiveTab = tab;
 
             if (tab == "responses" && isAuthorized)
@@ -355,7 +335,7 @@ namespace FormBuilder.Controllers
             }
 
             return View(template);
-        }
+        }   
 
         [HttpPost]
         [Authorize]

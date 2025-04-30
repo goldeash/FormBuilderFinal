@@ -4,12 +4,9 @@
 
 @{
     ViewData["Title"] = Model.Title;
-    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     var isAuthorized = User.IsInRole("Admin") || Model.UserId == currentUserId;
-    var canFillForm = User.Identity.IsAuthenticated &&
-                     (Model.IsPublic ||
-                      Model.AllowedUsers.Any(au => au.UserId == currentUserId) ||
-                      Model.UserId == currentUserId);
+    var canFillForm = User.Identity.IsAuthenticated && (Model.IsPublic || Model.AllowedUsers.Any(au => au.UserId == currentUserId) || Model.UserId == currentUserId);
     var activeTab = ViewBag.ActiveTab ?? "details";
     var likesCount = Model.Likes?.Count ?? 0;
     var hasLiked = Model.Likes?.Any(l => l.UserId == currentUserId) ?? false;
@@ -44,11 +41,8 @@
             @if (isAuthorized)
             {
                 <div class="btn-group">
-                    <a asp-action="Edit" asp-route-id="@Model.Id"
-                       class="btn btn-sm btn-outline-primary">Edit</a>
-                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteTemplateModal">
-                        Delete
-                    </button>
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteTemplateModal">Delete</button>
                 </div>
             }
         </div>
@@ -56,14 +50,12 @@
         <div class="card-body">
             <ul class="nav nav-tabs mb-4">
                 <li class="nav-item">
-                    <a class="nav-link @(activeTab == "details" ? "active" : "")"
-                       asp-action="View" asp-route-id="@Model.Id" asp-route-tab="details">Details</a>
+                    <a class="nav-link @(activeTab == "details" ? "active" : "")" asp-action="View" asp-route-id="@Model.Id" asp-route-tab="details">Details</a>
                 </li>
                 @if (isAuthorized)
                 {
                     <li class="nav-item">
-                        <a class="nav-link @(activeTab == "responses" ? "active" : "")"
-                           asp-action="View" asp-route-id="@Model.Id" asp-route-tab="responses">Responses</a>
+                        <a class="nav-link @(activeTab == "responses" ? "active" : "")" asp-action="View" asp-route-id="@Model.Id" asp-route-tab="responses">Responses</a>
                     </li>
                 }
             </ul>
@@ -112,11 +104,10 @@
                     </div>
                 }
 
-                @if (canFillForm)
+                @if (ViewBag.HasAccess)
                 {
                     <div class="d-flex justify-content-end mt-4">
-                        <a asp-controller="Form" asp-action="Fill" asp-route-templateId="@Model.Id"
-                           class="btn btn-primary">Fill Form</a>
+                        <a asp-controller="Form" asp-action="Fill" asp-route-templateId="@Model.Id" class="btn btn-primary">Fill Form</a>
                     </div>
                 }
             }
@@ -148,8 +139,7 @@
                                         <td>@response.User.Email</td>
                                         <td>@response.CreatedDate.ToString("g")</td>
                                         <td>
-                                            <a asp-controller="Form" asp-action="ViewForm" asp-route-id="@response.Id"
-                                               class="btn btn-sm btn-outline-primary">View</a>
+                                            <a asp-controller="Form" asp-action="ViewForm" asp-route-id="@response.Id" class="btn btn-sm btn-outline-primary">View</a>
                                         </td>
                                     </tr>
                                 }

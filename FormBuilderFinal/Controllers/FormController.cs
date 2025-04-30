@@ -25,9 +25,9 @@ namespace FormBuilder.Controllers
         public async Task<IActionResult> Fill(int templateId)
         {
             var template = await _context.Templates
-                .Include(t => t.Questions
-                    .Where(q => q.IsActive))
+                .Include(t => t.Questions.Where(q => q.IsActive))
                 .ThenInclude(q => q.Options)
+                .Include(t => t.AllowedUsers)
                 .FirstOrDefaultAsync(t => t.Id == templateId);
 
             if (template == null)
@@ -41,9 +41,12 @@ namespace FormBuilder.Controllers
                 return Forbid();
             }
 
-            if (!template.IsPublic &&
-                !template.AllowedUsers.Any(au => au.UserId == user.Id) &&
-                template.UserId != user.Id)
+            if (User.IsInRole("Admin") || template.UserId == user.Id || template.AllowedUsers.Any(au => au.UserId == user.Id))
+            {
+                return View(template);
+            }
+
+            if (!template.IsPublic)
             {
                 return Forbid();
             }
@@ -56,8 +59,8 @@ namespace FormBuilder.Controllers
         public async Task<IActionResult> Fill(int templateId, FormInputModel model)
         {
             var template = await _context.Templates
-                .Include(t => t.Questions
-                    .Where(q => q.IsActive))
+                .Include(t => t.Questions.Where(q => q.IsActive))
+                .Include(t => t.AllowedUsers)
                 .FirstOrDefaultAsync(t => t.Id == templateId);
 
             if (template == null)
@@ -71,7 +74,7 @@ namespace FormBuilder.Controllers
                 return Forbid();
             }
 
-            if (!template.IsPublic &&
+            if (!User.IsInRole("Admin") && !template.IsPublic &&
                 !template.AllowedUsers.Any(au => au.UserId == user.Id) &&
                 template.UserId != user.Id)
             {
