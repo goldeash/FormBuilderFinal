@@ -1,6 +1,5 @@
 ﻿using FormBuilder.Models;
 using Microsoft.AspNetCore.Identity;
-using System.Threading.Tasks;
 
 namespace FormBuilder.Data
 {
@@ -11,14 +10,12 @@ namespace FormBuilder.Data
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager)
         {
-            // Create roles
             if (!await roleManager.RoleExistsAsync("Admin"))
                 await roleManager.CreateAsync(new IdentityRole("Admin"));
 
             if (!await roleManager.RoleExistsAsync("User"))
                 await roleManager.CreateAsync(new IdentityRole("User"));
 
-            // Create admin user
             var adminEmail = "admin@example.com";
             var adminPassword = "Admin123!";
 

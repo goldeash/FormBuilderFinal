@@ -24,10 +24,8 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         $(document).ready(function() {
-            // Handle question type change for existing questions
             $('.question-type').trigger('change');
 
-            // All other scripts from Create.cshtml
             $(document).on('change', '.question-type', function() {
                 const optionsContainer = $(this).closest('.card-body').find('.options-container');
                 if ($(this).val() === 'MultipleChoice') {

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using FormBuilder.Data;
+﻿using FormBuilder.Data;
 using FormBuilder.Models;
 using FormBuilder.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -66,13 +63,11 @@ namespace FormBuilder.Controllers
                     UpdatedDate = DateTime.UtcNow
                 };
 
-                // Add tags
                 foreach (var tagName in model.Tags?.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct() ?? Enumerable.Empty<string>())
                 {
                     template.Tags.Add(new TemplateTag { Name = tagName });
                 }
 
-                // Add allowed users if template is not public
                 if (!model.IsPublic)
                 {
                     foreach (var email in model.AllowedUserEmails?.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct() ?? Enumerable.Empty<string>())
@@ -85,7 +80,6 @@ namespace FormBuilder.Controllers
                     }
                 }
 
-                // Add questions
                 for (int i = 0; i < model.Questions?.Count; i++)
                 {
                     var questionModel = model.Questions[i];
@@ -190,7 +184,6 @@ namespace FormBuilder.Controllers
                 template.IsPublic = model.IsPublic;
                 template.UpdatedDate = DateTime.UtcNow;
 
-                // Update tags
                 var existingTags = template.Tags.ToList();
                 var newTags = model.Tags?.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct().ToList() ?? new List<string>();
 
@@ -200,7 +193,6 @@ namespace FormBuilder.Controllers
                 foreach (var tagName in newTags.Where(t => !existingTags.Any(et => et.Name == t)))
                     template.Tags.Add(new TemplateTag { Name = tagName });
 
-                // Update allowed users
                 var existingAccesses = template.AllowedUsers.ToList();
                 var newUserEmails = model.IsPublic ? new List<string>() :
                     model.AllowedUserEmails?.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList() ?? new List<string>();
@@ -218,10 +210,8 @@ namespace FormBuilder.Controllers
                     }
                 }
 
-                // Update questions
                 var existingQuestions = template.Questions.ToList();
 
-                // Remove only questions that have no answers and not in new list
                 var questionsToRemove = existingQuestions
                     .Where(eq => !model.Questions.Any(mq => mq.Id == eq.Id))
                     .ToList();
@@ -239,7 +229,6 @@ namespace FormBuilder.Controllers
                     _context.Questions.Remove(question);
                 }
 
-                // Update or add questions
                 for (int i = 0; i < model.Questions?.Count; i++)
                 {
                     var questionModel = model.Questions[i];
@@ -361,7 +350,6 @@ namespace FormBuilder.Controllers
                 return Forbid();
             }
 
-            // Сначала удаляем все ответы, связанные с формами этого шаблона
             var forms = await _context.Forms
                 .Where(f => f.TemplateId == id)
                 .Include(f => f.Answers)
@@ -373,18 +361,15 @@ namespace FormBuilder.Controllers
             }
             _context.Forms.RemoveRange(forms);
 
-            // Удаляем все связанные данные шаблона
             _context.TemplateTags.RemoveRange(template.Tags);
             _context.TemplateAccesses.RemoveRange(template.AllowedUsers);
 
-            // Удаляем все опции вопросов
             foreach (var question in template.Questions)
             {
                 _context.Options.RemoveRange(question.Options);
             }
             _context.Questions.RemoveRange(template.Questions);
 
-            // Удаляем сам шаблон
             _context.Templates.Remove(template);
 
             try
@@ -393,7 +378,6 @@ namespace FormBuilder.Controllers
             }
             catch (DbUpdateException ex)
             {
-                // Логируем ошибку
                 Console.WriteLine($"Error deleting template: {ex.Message}");
                 return RedirectToAction("ViewTemplate", new { id, error = "Failed to delete template due to database constraints" });
             }

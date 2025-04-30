@@ -6,8 +6,6 @@
 
 <div class="admin-panel">
     <h2 class="mb-4">User Management</h2>
-
-    <!-- Delete User Confirmation Modal -->
     <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -92,14 +90,12 @@
             let deleteUserForm = null;
             const deleteUserModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
 
-            // Handle delete user button click
             $('.delete-user-btn').click(function(e) {
                 e.preventDefault();
                 deleteUserForm = $(this).closest('form');
                 deleteUserModal.show();
             });
 
-            // Handle confirm user delete
             $('#confirmUserDelete').click(function() {
                 if (deleteUserForm) {
                     $.post(deleteUserForm.attr('action'), deleteUserForm.serialize(), function() {

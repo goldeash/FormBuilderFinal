@@ -2,9 +2,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using FormBuilder.Models;
 
 namespace FormBuilder.Controllers
@@ -65,10 +62,8 @@ namespace FormBuilder.Controllers
                 await _userManager.AddToRoleAsync(user, "Admin");
             }
 
-            // Обновляем SecurityStamp для выхода из всех сессий
             await _userManager.UpdateSecurityStampAsync(user);
 
-            // Если это текущий пользователь - обновляем его аутентификацию
             if (isCurrentUser)
             {
                 await _signInManager.RefreshSignInAsync(user);
@@ -93,7 +88,6 @@ namespace FormBuilder.Controllers
             await _userManager.UpdateAsync(user);
             await _userManager.UpdateSecurityStampAsync(user);
 
-            // Если пользователь блокирует себя - выходим
             if (isCurrentUser && user.IsBlocked)
             {
                 await _signInManager.SignOutAsync();
@@ -115,7 +109,6 @@ namespace FormBuilder.Controllers
 
             var isCurrentUser = user.Id == _userManager.GetUserId(User);
 
-            // Принудительный выход для всех сессий пользователя
             await _userManager.UpdateSecurityStampAsync(user);
 
             var result = await _userManager.DeleteAsync(user);

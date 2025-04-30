@@ -22,7 +22,6 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         $(document).ready(function() {
-            // Handle question type change
             $(document).on('change', '.question-type', function() {
                 const optionsContainer = $(this).closest('.card-body').find('.options-container');
                 if ($(this).val() === 'MultipleChoice') {
@@ -32,7 +31,6 @@
                 }
             });
 
-            // Add new question
             $('#addQuestionBtn').click(function() {
                 const index = $('.question-card').length;
                 const newQuestion = `
@@ -80,13 +78,11 @@
                 $('#questionsContainer').append(newQuestion);
             });
 
-            // Remove question
             $(document).on('click', '.remove-question', function() {
                 $(this).closest('.question-card').remove();
                 renumberQuestions();
             });
 
-            // Add option to question
             $(document).on('click', '.add-option', function() {
                 const optionsList = $(this).siblings('.options-list');
                 const questionIndex = $(this).closest('.question-card').data('index');
@@ -100,12 +96,10 @@
                 optionsList.append(newOption);
             });
 
-            // Remove option
             $(document).on('click', '.remove-option', function() {
                 $(this).closest('.input-group').remove();
             });
 
-            // Toggle allowed users container
             $('#IsPublic').change(function() {
                 if ($(this).is(':checked')) {
                     $('#allowedUsersContainer').hide();
@@ -114,7 +108,6 @@
                 }
             });
 
-            // Add user email
             $('#addUserBtn').click(function() {
                 const index = $('#allowedUsersList .input-group').length;
                 const newUser = `
@@ -126,12 +119,10 @@
                 $('#allowedUsersList').append(newUser);
             });
 
-            // Remove user email
             $(document).on('click', '.remove-user', function() {
                 $(this).closest('.input-group').remove();
             });
 
-            // Add tag
             $('#addTagBtn').click(function() {
                 const index = $('#tagsList .input-group').length;
                 const newTag = `
@@ -143,12 +134,10 @@
                 $('#tagsList').append(newTag);
             });
 
-            // Remove tag
             $(document).on('click', '.remove-tag', function() {
                 $(this).closest('.input-group').remove();
             });
 
-            // Auto-complete for user emails
             $(document).on('focus', '.user-email', function() {
                 $(this).autocomplete({
                     source: function(request, response) {
@@ -160,7 +149,6 @@
                 });
             });
 
-            // Auto-complete for tags
             $(document).on('focus', '.tag-input', function() {
                 $(this).autocomplete({
                     source: function(request, response) {
@@ -172,13 +160,11 @@
                 });
             });
 
-            // Renumber questions after deletion
             function renumberQuestions() {
                 $('.question-card').each(function(index) {
                     $(this).data('index', index);
                     $(this).find('.card-header h5').text(`Question ${index + 1}`);
 
-                    // Update all input names with new index
                     $(this).find('input, select').each(function() {
                         const name = $(this).attr('name');
                         if (name) {

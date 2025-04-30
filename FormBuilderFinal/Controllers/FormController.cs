@@ -1,8 +1,4 @@
-﻿// Controllers/FormController.cs
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using FormBuilder.Data;
+﻿using FormBuilder.Data;
 using FormBuilder.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -45,7 +41,6 @@ namespace FormBuilder.Controllers
                 return Forbid();
             }
 
-            // Check if user has access to this template
             if (!template.IsPublic &&
                 !template.AllowedUsers.Any(au => au.UserId == user.Id) &&
                 template.UserId != user.Id)
@@ -76,7 +71,6 @@ namespace FormBuilder.Controllers
                 return Forbid();
             }
 
-            // Check if user has access to this template
             if (!template.IsPublic &&
                 !template.AllowedUsers.Any(au => au.UserId == user.Id) &&
                 template.UserId != user.Id)
@@ -111,7 +105,6 @@ namespace FormBuilder.Controllers
                 return RedirectToAction("View", "Template", new { id = templateId });
             }
 
-            // If we got this far, something failed, redisplay form
             template = await _context.Templates
                 .Include(t => t.Questions)
                     .ThenInclude(q => q.Options)
@@ -142,7 +135,6 @@ namespace FormBuilder.Controllers
                 return Forbid();
             }
 
-            // Check if user has access to view this form
             if (!User.IsInRole("Admin") &&
                 form.UserId != user.Id &&
                 form.Template.UserId != user.Id)
