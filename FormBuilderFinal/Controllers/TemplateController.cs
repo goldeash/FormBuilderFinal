@@ -1,4 +1,5 @@
-﻿using FormBuilder.Data;
+﻿using System.Security.Claims;
+using FormBuilder.Data;
 using FormBuilder.Models;
 using FormBuilder.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FormBuilder.Controllers
 {
-    [Authorize]
     public class TemplateController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -23,6 +23,7 @@ namespace FormBuilder.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -38,12 +39,14 @@ namespace FormBuilder.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public IActionResult Create()
         {
             return View(new TemplateViewModel());
         }
 
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(TemplateViewModel model)
         {
@@ -115,6 +118,7 @@ namespace FormBuilder.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> Edit(int id)
         {
             var template = await _context.Templates
@@ -158,6 +162,7 @@ namespace FormBuilder.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, TemplateViewModel model)
         {
@@ -308,9 +313,33 @@ namespace FormBuilder.Controllers
                 return NotFound();
             }
 
-            var user = await _userManager.GetUserAsync(User);
-            var isAuthorized = User.IsInRole("Admin") || template.UserId == user?.Id;
+            if (!User.Identity.IsAuthenticated)
+            {
+                if (!template.IsPublic)
+                {
+                    return RedirectToAction("Login", "Account");
+                }
 
+                ViewBag.IsAuthorized = false;
+                ViewBag.ActiveTab = "details";
+                return View(template);
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null || user.IsBlocked)
+            {
+                return Forbid();
+            }
+
+            if (!template.IsPublic &&
+                !template.AllowedUsers.Any(au => au.UserId == user.Id) &&
+                template.UserId != user.Id &&
+                !User.IsInRole("Admin"))
+            {
+                return Forbid();
+            }
+
+            var isAuthorized = User.IsInRole("Admin") || template.UserId == user.Id;
             ViewBag.IsAuthorized = isAuthorized;
             ViewBag.ActiveTab = tab;
 
@@ -329,6 +358,7 @@ namespace FormBuilder.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
@@ -378,35 +408,10 @@ namespace FormBuilder.Controllers
             }
             catch (DbUpdateException ex)
             {
-                Console.WriteLine($"Error deleting template: {ex.Message}");
                 return RedirectToAction("ViewTemplate", new { id, error = "Failed to delete template due to database constraints" });
             }
 
             return RedirectToAction("Index");
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> View(int id)
-        {
-            var template = await _context.Templates
-                .Include(t => t.User)
-                .Include(t => t.Tags)
-                .Include(t => t.Questions)
-                    .ThenInclude(q => q.Options)
-                .Include(t => t.AllowedUsers)
-                    .ThenInclude(au => au.User)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
-            if (template == null)
-            {
-                return NotFound();
-            }
-
-            var user = await _userManager.GetUserAsync(User);
-            var isAuthorized = User.IsInRole("Admin") || template.UserId == user?.Id;
-
-            ViewBag.IsAuthorized = isAuthorized;
-            return View(template);
         }
 
         [HttpPost]

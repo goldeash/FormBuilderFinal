@@ -56,33 +56,33 @@ namespace FormBuilder.Controllers
 
         private async Task<List<Template>> GetTemplatesForCurrentUser()
         {
+            var query = _context.Templates
+                .Include(t => t.User)
+                .Include(t => t.Tags)
+                .Where(t => t.IsPublic);
+
             if (User.Identity.IsAuthenticated)
             {
                 var user = await _userManager.GetUserAsync(User);
 
                 if (User.IsInRole("Admin"))
                 {
-                    return await _context.Templates
+                    query = _context.Templates
+                        .Include(t => t.User)
+                        .Include(t => t.Tags);
+                }
+                else if (user != null)
+                {
+                    query = query.Union(_context.Templates
                         .Include(t => t.User)
                         .Include(t => t.Tags)
-                        .OrderByDescending(t => t.CreatedDate)
-                        .ToListAsync();
+                        .Where(t => !t.IsPublic &&
+                            (t.AllowedUsers.Any(au => au.UserId == user.Id) ||
+                            t.UserId == user.Id)));
                 }
-
-                return await _context.Templates
-                    .Include(t => t.User)
-                    .Include(t => t.Tags)
-                    .Where(t => t.IsPublic ||
-                               t.AllowedUsers.Any(au => au.UserId == user.Id) ||
-                               t.UserId == user.Id)
-                    .OrderByDescending(t => t.CreatedDate)
-                    .ToListAsync();
             }
 
-            return await _context.Templates
-                .Include(t => t.User)
-                .Include(t => t.Tags)
-                .Where(t => t.IsPublic)
+            return await query
                 .OrderByDescending(t => t.CreatedDate)
                 .ToListAsync();
         }
@@ -93,23 +93,27 @@ namespace FormBuilder.Controllers
             var queryable = _context.Templates
                 .Include(t => t.User)
                 .Include(t => t.Tags)
-                .AsQueryable();
+                .Where(t => t.IsPublic);
 
             if (User.Identity.IsAuthenticated)
             {
                 var user = await _userManager.GetUserAsync(User);
 
-                if (!User.IsInRole("Admin"))
+                if (User.IsInRole("Admin"))
                 {
-                    queryable = queryable.Where(t =>
-                        t.IsPublic ||
-                        t.AllowedUsers.Any(au => au.UserId == user.Id) ||
-                        t.UserId == user.Id);
+                    queryable = _context.Templates
+                        .Include(t => t.User)
+                        .Include(t => t.Tags);
                 }
-            }
-            else
-            {
-                queryable = queryable.Where(t => t.IsPublic);
+                else if (user != null)
+                {
+                    queryable = queryable.Union(_context.Templates
+                        .Include(t => t.User)
+                        .Include(t => t.Tags)
+                        .Where(t => !t.IsPublic &&
+                            (t.AllowedUsers.Any(au => au.UserId == user.Id) ||
+                            t.UserId == user.Id)));
+                }
             }
 
             if (_fullTextSearchEnabled)
@@ -140,18 +144,6 @@ namespace FormBuilder.Controllers
             return await queryable
                 .OrderByDescending(t => t.CreatedDate)
                 .ToListAsync();
-        }
-
-        [Authorize]
-        public IActionResult Secret()
-        {
-            return Content("This is a secret page!");
-        }
-
-        [Authorize(Roles = "Admin")]
-        public IActionResult AdminSecret()
-        {
-            return Content("This is an ADMIN secret page!");
         }
     }
 }

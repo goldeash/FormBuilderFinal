@@ -1,8 +1,11 @@
-﻿@using FormBuilder.Models
+﻿@using System.Security.Claims
+@using FormBuilder.Models
 @model FormBuilder.Models.Form
 
 @{
     ViewData["Title"] = "Form Submission";
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var isAuthorized = User.IsInRole("Admin") || Model.UserId == currentUserId || Model.Template.UserId == currentUserId;
 }
 
 <div class="container mt-4">
@@ -44,8 +47,16 @@
             }
 
             <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                <a asp-action="View" asp-controller="Template" asp-route-id="@Model.TemplateId"
-                   class="btn btn-outline-secondary">Back to Template</a>
+                @if (isAuthorized)
+                {
+                    <a asp-action="View" asp-controller="Template" asp-route-id="@Model.TemplateId" asp-route-tab="responses"
+                       class="btn btn-outline-secondary">Back to Template</a>
+                }
+                else
+                {
+                    <a asp-action="View" asp-controller="Template" asp-route-id="@Model.TemplateId"
+                       class="btn btn-outline-secondary">Back to Template</a>
+                }
             </div>
         </div>
     </div>
