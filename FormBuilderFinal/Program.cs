@@ -1,8 +1,8 @@
+using FormBuilder.Data;
+using FormBuilder.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using FormBuilder.Models;
-using FormBuilder.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +51,17 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Middleware to set theme from cookie
+app.Use(async (context, next) =>
+{
+    var theme = context.Request.Cookies["theme"];
+    if (!string.IsNullOrEmpty(theme))
+    {
+        context.Items["Theme"] = theme;
+    }
+    await next();
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -66,7 +77,7 @@ app.Use(async (context, next) =>
         if (user == null || user.IsBlocked)
         {
             await signInManager.SignOutAsync();
-            context.Response.Redirect("/Account/Login");    
+            context.Response.Redirect("/Account/Login");
             return;
         }
 
