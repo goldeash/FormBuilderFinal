@@ -53,28 +53,34 @@
                             }
                         </td>
                         <td>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <form asp-action="ToggleAdmin" method="post">
-                                    <input type="hidden" name="userId" value="@user.Id" />
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm @(user.IsAdmin ? "btn-warning" : "btn-success")">
-                                        @(user.IsAdmin ? "Remove Admin" : "Make Admin")
-                                    </button>
-                                </form>
-                                <form asp-action="ToggleBlock" method="post">
-                                    <input type="hidden" name="userId" value="@user.Id" />
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm @(user.IsBlocked ? "btn-success" : "btn-danger")">
-                                        @(user.IsBlocked ? "Unblock" : "Block")
-                                    </button>
-                                </form>
-                                <form asp-action="DeleteUser" method="post" class="delete-user-form">
-                                    <input type="hidden" name="userId" value="@user.Id" />
-                                    @Html.AntiForgeryToken()
-                                    <button type="button" class="btn btn-sm btn-outline-danger delete-user-btn">
-                                        Delete
-                                    </button>
-                                </form>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    Actions
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <form asp-action="ToggleAdmin" method="post">
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <button type="submit" class="dropdown-item">
+                                                @(user.IsAdmin ? "Remove Admin" : "Make Admin")
+                                            </button>
+                                        </form>
+                                    </li>
+                                    <li>
+                                        <form asp-action="ToggleBlock" method="post">
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <button type="submit" class="dropdown-item">
+                                                @(user.IsBlocked ? "Unblock" : "Block")
+                                            </button>
+                                        </form>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button type="button" class="dropdown-item text-danger delete-user-btn" data-user-id="@user.Id">
+                                            Delete
+                                        </button>
+                                    </li>
+                                </ul>
                             </div>
                         </td>
                     </tr>

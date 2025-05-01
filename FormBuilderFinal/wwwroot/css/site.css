@@ -5,7 +5,6 @@
     --danger-color: #dc3545;
     --warning-color: #ffc107;
     --info-color: #17a2b8;
-    /* Light theme variables */
     --bg-color: #f5f5f5;
     --text-color: #212529;
     --card-bg: #ffffff;
@@ -304,7 +303,6 @@ a {
     border-color: var(--primary-color);
 }
 
-/* Modal styles */
 .modal-content {
     background-color: var(--modal-bg);
     color: var(--modal-text);
@@ -319,25 +317,21 @@ a {
     color: var(--text-color);
 }
 
-/* Form answers */
 .form-control-plaintext {
     color: var(--text-color) !important;
 }
 
-/* Textarea placeholder */
 textarea::placeholder {
     color: var(--placeholder-color);
     opacity: 1;
 }
 
-/* Disabled form elements */
 .form-control:disabled {
     background-color: var(--input-bg);
     color: var(--text-color);
     opacity: 0.8;
 }
 
-/* Dropdowns */
 .dropdown-menu {
     background-color: var(--card-bg);
     border-color: var(--border-color);
@@ -356,7 +350,6 @@ textarea::placeholder {
     border-color: var(--border-color);
 }
 
-/* Autocomplete */
 .ui-menu {
     background-color: var(--card-bg);
     border-color: var(--border-color);
@@ -372,7 +365,6 @@ textarea::placeholder {
         color: var(--text-color);
     }
 
-/* Badges */
 .badge.bg-primary {
     background-color: var(--primary-color) !important;
 }
@@ -381,7 +373,6 @@ textarea::placeholder {
     background-color: var(--secondary-color) !important;
 }
 
-/* Pagination */
 .page-link {
     background-color: var(--card-bg);
     border-color: var(--border-color);
