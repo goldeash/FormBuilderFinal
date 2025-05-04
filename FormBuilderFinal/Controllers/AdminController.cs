@@ -113,77 +113,58 @@ namespace FormBuilder.Controllers
 
             var isCurrentUser = user.Id == _userManager.GetUserId(User);
 
-            var userTemplates = await _context.Templates
-                .Include(t => t.Tags)
-                .Include(t => t.AllowedUsers)
-                .Include(t => t.Questions)
-                    .ThenInclude(q => q.Options)
-                .Include(t => t.Comments)
-                .Include(t => t.Likes)
-                .Where(t => t.UserId == user.Id)
-                .ToListAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            foreach (var template in userTemplates)
+            try
             {
-                var forms = await _context.Forms
-                    .Include(f => f.Answers)
-                    .Where(f => f.TemplateId == template.Id)
+                var templates = await _context.Templates
+                    .Where(t => t.UserId == user.Id)
                     .ToListAsync();
 
-                foreach (var form in forms)
+                _context.Templates.RemoveRange(templates);
+
+                var forms = await _context.Forms
+                    .Where(f => f.UserId == user.Id)
+                    .ToListAsync();
+
+                _context.Forms.RemoveRange(forms);
+
+                await _context.Comments
+                    .Where(c => c.UserId == user.Id)
+                    .ExecuteDeleteAsync();
+
+                await _context.Likes
+                    .Where(l => l.UserId == user.Id)
+                    .ExecuteDeleteAsync();
+
+                await _context.TemplateAccesses
+                    .Where(ta => ta.UserId == user.Id)
+                    .ExecuteDeleteAsync();
+
+                var result = await _userManager.DeleteAsync(user);
+
+                if (!result.Succeeded)
                 {
-                    _context.Answers.RemoveRange(form.Answers);
-                    _context.Forms.Remove(form);
+                    await transaction.RollbackAsync();
+                    return BadRequest("Failed to delete user");
                 }
 
-                _context.TemplateTags.RemoveRange(template.Tags);
-                _context.TemplateAccesses.RemoveRange(template.AllowedUsers);
-                _context.Comments.RemoveRange(template.Comments);
-                _context.Likes.RemoveRange(template.Likes);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                foreach (var question in template.Questions)
+                if (isCurrentUser)
                 {
-                    _context.Options.RemoveRange(question.Options);
+                    await _signInManager.SignOutAsync();
+                    return RedirectToAction("Index", "Home");
                 }
-                _context.Questions.RemoveRange(template.Questions);
-                _context.Templates.Remove(template);
+
+                return RedirectToAction("Index");
             }
-
-            var userForms = await _context.Forms
-                .Include(f => f.Answers)
-                .Where(f => f.UserId == user.Id)
-                .ToListAsync();
-
-            foreach (var form in userForms)
+            catch (Exception ex)
             {
-                _context.Answers.RemoveRange(form.Answers);
-                _context.Forms.Remove(form);
+                await transaction.RollbackAsync();
+                return StatusCode(500, "An error occurred while deleting the user");
             }
-
-            var userLikes = await _context.Likes
-                .Where(l => l.UserId == user.Id)
-                .ToListAsync();
-            _context.Likes.RemoveRange(userLikes);
-
-            var userComments = await _context.Comments
-                .Where(c => c.UserId == user.Id)
-                .ToListAsync();
-            _context.Comments.RemoveRange(userComments);
-
-            var templateAccesses = await _context.TemplateAccesses
-                .Where(ta => ta.UserId == user.Id)
-                .ToListAsync();
-            _context.TemplateAccesses.RemoveRange(templateAccesses);
-
-            var result = await _userManager.DeleteAsync(user);
-
-            if (result.Succeeded && isCurrentUser)
-            {
-                await _signInManager.SignOutAsync();
-                return RedirectToAction("Index", "Home");
-            }
-
-            return RedirectToAction("Index");
         }
 
         public class UserViewModel
