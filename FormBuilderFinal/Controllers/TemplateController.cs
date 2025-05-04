@@ -559,7 +559,7 @@ namespace FormBuilder.Controllers
             }
 
             return View(analytics);
-        }
+        }   
 
         [HttpGet]
         public async Task<IActionResult> SearchUsers(string term)
