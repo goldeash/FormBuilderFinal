@@ -471,6 +471,97 @@ namespace FormBuilder.Controllers
         }
 
         [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> Analytics(int id)
+        {
+            var template = await _context.Templates
+                .Include(t => t.Questions.Where(q => q.ShowInTable && q.IsActive))
+                .ThenInclude(q => q.Options)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (template == null) return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+            if (template.UserId != user.Id && !User.IsInRole("Admin")) return Forbid();
+
+            var forms = await _context.Forms
+                .Include(f => f.Answers)
+                .Where(f => f.TemplateId == id)
+                .ToListAsync();
+
+            var analytics = new AnalyticsViewModel
+            {
+                TemplateId = template.Id,
+                TemplateTitle = template.Title
+            };
+
+            foreach (var question in template.Questions.Where(q => q.ShowInTable))
+            {
+                var answers = forms
+                    .SelectMany(f => f.Answers)
+                    .Where(a => a.QuestionId == question.Id)
+                    .ToList();
+
+                var questionAnalytics = new QuestionAnalytics
+                {
+                    QuestionId = question.Id,
+                    QuestionTitle = question.Title,
+                    QuestionType = question.Type.ToString(),
+                    TotalResponses = answers.Count
+                };
+
+                switch (question.Type)
+                {
+                    case QuestionType.Integer:
+                        var numericAnswers = answers
+                            .Where(a => int.TryParse(a.Value, out _))
+                            .Select(a => int.Parse(a.Value))
+                            .ToList();
+
+                        if (numericAnswers.Any())
+                        {
+                            questionAnalytics.AverageValue = numericAnswers.Average();
+                            questionAnalytics.MinValue = numericAnswers.Min();
+                            questionAnalytics.MaxValue = numericAnswers.Max();
+                        }
+                        break;
+
+                    case QuestionType.SingleLineText:
+                    case QuestionType.MultiLineText:
+                        var textAnswers = answers
+                            .Where(a => !string.IsNullOrEmpty(a.Value))
+                            .ToList();
+
+                        if (textAnswers.Any())
+                        {
+                            questionAnalytics.AverageLength = textAnswers.Average(a => a.Value.Length);
+                        }
+                        break;
+
+                    case QuestionType.MultipleChoice:
+                        var optionCounts = new Dictionary<string, int>();
+                        foreach (var answer in answers.Where(a => !string.IsNullOrEmpty(a.Value)))
+                        {
+                            if (!optionCounts.ContainsKey(answer.Value))
+                                optionCounts[answer.Value] = 0;
+                            optionCounts[answer.Value]++;
+                        }
+
+                        foreach (var option in question.Options)
+                        {
+                            var count = optionCounts.ContainsKey(option.Value) ? optionCounts[option.Value] : 0;
+                            questionAnalytics.OptionPercentages[option.Value] = (double)count / answers.Count * 100;
+                        }
+                        break;
+                }
+
+                analytics.QuestionsAnalytics.Add(questionAnalytics);
+            }
+
+            return View(analytics);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> SearchUsers(string term)
         {
             if (string.IsNullOrWhiteSpace(term))
