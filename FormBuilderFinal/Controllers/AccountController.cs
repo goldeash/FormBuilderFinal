@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using FormBuilder.Models;
 using System.ComponentModel.DataAnnotations;
+using FormBuilder.Services;
 
 namespace FormBuilder.Controllers
 {
@@ -9,16 +10,17 @@ namespace FormBuilder.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly IConfiguration _configuration;
+        private readonly IEmailService _emailService;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IEmailService emailService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
-            _configuration = configuration;
+            _emailService = emailService;
         }
 
         [HttpGet]
@@ -40,6 +42,8 @@ namespace FormBuilder.Controllers
 
                 if (result.Succeeded)
                 {
+                    _ = _emailService.SendRegistrationEmailAsync(user);
+
                     await _signInManager.SignInAsync(user, isPersistent: false);
                     return RedirectToAction("Index", "Home");
                 }
