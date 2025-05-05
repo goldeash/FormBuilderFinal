@@ -25,7 +25,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Initialize sortable
             var sortable = new Sortable(document.getElementById('questionsContainer'), {
                 handle: '.question-handle',
                 animation: 150,
@@ -34,7 +33,6 @@
                 }
             });
 
-            // Trigger change event for question types to show/hide options
             $('.question-type').trigger('change');
 
             $(document).on('change', '.question-type', function() {
