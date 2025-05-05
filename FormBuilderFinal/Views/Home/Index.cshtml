@@ -1,5 +1,4 @@
 ﻿@model IEnumerable<FormBuilder.Models.Template>
-
 @{
     ViewData["Title"] = ViewBag.SearchQuery != null ?
         $"Search Results for '{ViewBag.SearchQuery}'" : "Home Page";
@@ -25,7 +24,20 @@
 </div>
 
 <div class="container mt-4">
-    <h2 class="mb-4">@(ViewBag.SearchQuery != null ? "Search Results" : "Available Forms")</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>@(ViewBag.SearchQuery != null ? "Search Results" : "Available Forms")</h2>
+
+        <ul class="nav nav-pills">
+            <li class="nav-item">
+                <a class="nav-link @(ViewBag.ActiveTab == "new" ? "active" : "")"
+                   href="#" onclick="loadTemplates('new')">Newest</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(ViewBag.ActiveTab == "popular" ? "active" : "")"
+                   href="#" onclick="loadTemplates('popular')">Most Popular</a>
+            </li>
+        </ul>
+    </div>
 
     @if (!Model.Any())
     {
@@ -37,10 +49,10 @@
     }
     else
     {
-        <div class="list-group">
+        <div class="list-group" id="templates-container">
             @foreach (var template in Model)
             {
-                <a asp-action="View" asp-controller="Template" asp-route-id="@template.Id"
+                <a asp-action="ViewTemplate" asp-controller="Template" asp-route-id="@template.Id"
                    class="list-group-item list-group-item-action">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -48,7 +60,8 @@
                             <p class="mb-1 text-muted">@template.Description</p>
                             <small class="text-muted">
                                 Created by: @template.User.Email |
-                                Created: @template.CreatedDate.ToString("g")
+                                Created: @template.CreatedDate.ToString("g") |
+                                Likes: <i class="fas fa-heart text-danger"></i> @template.Likes.Count
                             </small>
                         </div>
                         <span class="badge bg-primary">@template.Topic</span>
@@ -56,5 +69,90 @@
                 </a>
             }
         </div>
+
+        @if (ViewBag.HasMore)
+        {
+            <div class="text-center mt-4">
+                <button id="load-more-btn" class="btn btn-primary"
+                        onclick="loadMore()">
+                    Load More
+                </button>
+                <div id="loading-spinner" class="spinner-border text-primary d-none" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
     }
 </div>
+
+@section Scripts {
+    <script>
+        let currentPage = @ViewBag.CurrentPage;
+        let currentTab = '@ViewBag.ActiveTab';
+        let currentQuery = '@ViewBag.SearchQuery';
+
+        function loadTemplates(tab) {
+            currentPage = 0;
+            currentTab = tab;
+
+            let url = currentQuery
+                ? '@Url.Action("Search", "Home")?query=' + encodeURIComponent(currentQuery) + '&tab=' + tab
+                : '@Url.Action("Index", "Home")?tab=' + tab;
+
+            window.location.href = url;
+        }
+
+        function loadMore() {
+            const btn = $('#load-more-btn');
+            const spinner = $('#loading-spinner');
+
+            btn.prop('disabled', true);
+            spinner.removeClass('d-none');
+
+            $.ajax({
+                url: '@Url.Action("LoadMore", "Home")',
+                type: 'GET',
+                data: {
+                    page: currentPage + 1,
+                    tab: currentTab,
+                    query: currentQuery
+                },
+                success: function(response) {
+                    if (response.templates.length > 0) {
+                        response.templates.forEach(function(template) {
+                            $('#templates-container').append(`
+                                <a href="${template.url}"
+                                   class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h5>${template.title}</h5>
+                                            <p class="mb-1 text-muted">${template.description}</p>
+                                            <small class="text-muted">
+                                                Created by: ${template.userEmail} |
+                                                Created: ${template.createdDate} |
+                                                Likes: <i class="fas fa-heart text-danger"></i> ${template.likesCount}
+                                            </small>
+                                        </div>
+                                        <span class="badge bg-primary">${template.topic}</span>
+                                    </div>
+                                </a>`
+                            );
+                        });
+
+                        currentPage++;
+
+                        if (!response.hasMore) {
+                            btn.hide();
+                        }
+                    } else {
+                        btn.hide();
+                    }
+                },
+                complete: function() {
+                    btn.prop('disabled', false);
+                    spinner.addClass('d-none');
+                }
+            });
+        }
+    </script>
+}

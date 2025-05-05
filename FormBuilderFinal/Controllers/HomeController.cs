@@ -12,6 +12,7 @@ namespace FormBuilder.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly bool _fullTextSearchEnabled;
+        private const int PageSize = 10;
 
         public HomeController(
             ApplicationDbContext context,
@@ -35,14 +36,19 @@ namespace FormBuilder.Controllers
             }
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 0, string tab = "new")
         {
-            var templates = await GetTemplatesForCurrentUser();
+            ViewBag.ActiveTab = tab;
+            ViewBag.CurrentPage = page;
+
+            var templates = await GetTemplatesForCurrentUser(page, tab);
+            ViewBag.HasMore = await CheckHasMore(page, tab);
+
             return View(templates);
         }
 
         [HttpGet]
-        public async Task<IActionResult> Search(string query)
+        public async Task<IActionResult> Search(string query, int page = 0, string tab = "new")
         {
             if (string.IsNullOrWhiteSpace(query))
             {
@@ -50,16 +56,94 @@ namespace FormBuilder.Controllers
             }
 
             ViewBag.SearchQuery = query;
-            var templates = await SearchTemplates(query);
+            ViewBag.ActiveTab = tab;
+            ViewBag.CurrentPage = page;
+
+            var templates = await SearchTemplates(query, page, tab);
+            ViewBag.HasMore = await CheckHasMore(page, tab, query);
+
             return View("Index", templates);
         }
 
-        private async Task<List<Template>> GetTemplatesForCurrentUser()
+        [HttpGet]
+        public async Task<IActionResult> LoadMore(int page, string tab, string query = null)
+        {
+            List<Template> templates;
+            if (!string.IsNullOrEmpty(query))
+            {
+                templates = await SearchTemplates(query, page, tab);
+            }
+            else
+            {
+                templates = await GetTemplatesForCurrentUser(page, tab);
+            }
+
+            var hasMore = await CheckHasMore(page, tab, query);
+
+            return Json(new
+            {
+                templates = templates.Select(t => new {
+                    id = t.Id,
+                    title = t.Title,
+                    description = t.Description,
+                    userEmail = t.User.Email,
+                    createdDate = t.CreatedDate.ToString("g"),
+                    likesCount = t.Likes.Count,
+                    topic = t.Topic,
+                    url = Url.Action("ViewTemplate", "Template", new { id = t.Id })
+                }),
+                hasMore
+            });
+        }
+
+        private async Task<bool> CheckHasMore(int page, string tab, string query = null)
+        {
+            IQueryable<Template> baseQuery;
+            if (!string.IsNullOrEmpty(query))
+            {
+                baseQuery = await BuildSearchQuery(query);
+            }
+            else
+            {
+                baseQuery = await BuildBaseQuery();
+            }
+
+            baseQuery = ApplySorting(baseQuery, tab);
+
+            return await baseQuery.CountAsync() > (page + 1) * PageSize;
+        }
+
+        private async Task<List<Template>> GetTemplatesForCurrentUser(int page, string tab)
+        {
+            var query = await BuildBaseQuery();
+            query = ApplySorting(query, tab);
+
+            return await query
+                .Include(t => t.Likes)
+                .Skip(page * PageSize)
+                .Take(PageSize)
+                .ToListAsync();
+        }
+
+        private async Task<List<Template>> SearchTemplates(string query, int page, string tab)
+        {
+            var searchTerms = query.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var queryable = await BuildSearchQuery(query);
+            queryable = ApplySorting(queryable, tab);
+
+            return await queryable
+                .Include(t => t.Likes)
+                .Skip(page * PageSize)
+                .Take(PageSize)
+                .ToListAsync();
+        }
+
+        private async Task<IQueryable<Template>> BuildBaseQuery()
         {
             var query = _context.Templates
                 .Include(t => t.User)
                 .Include(t => t.Tags)
-                .Where(t => t.IsPublic);
+                .AsQueryable();
 
             if (User.Identity.IsAuthenticated)
             {
@@ -67,54 +151,25 @@ namespace FormBuilder.Controllers
 
                 if (User.IsInRole("Admin"))
                 {
-                    query = _context.Templates
-                        .Include(t => t.User)
-                        .Include(t => t.Tags);
+                    return query;
                 }
-                else if (user != null)
-                {
-                    query = query.Union(_context.Templates
-                        .Include(t => t.User)
-                        .Include(t => t.Tags)
-                        .Where(t => !t.IsPublic &&
-                            (t.AllowedUsers.Any(au => au.UserId == user.Id) ||
-                            t.UserId == user.Id)));
-                }
+
+                query = query.Where(t => t.IsPublic ||
+                                       t.AllowedUsers.Any(au => au.UserId == user.Id) ||
+                                       t.UserId == user.Id);
+            }
+            else
+            {
+                query = query.Where(t => t.IsPublic);
             }
 
-            return await query
-                .OrderByDescending(t => t.CreatedDate)
-                .ToListAsync();
+            return query;
         }
 
-        private async Task<List<Template>> SearchTemplates(string query)
+        private async Task<IQueryable<Template>> BuildSearchQuery(string query)
         {
             var searchTerms = query.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            var queryable = _context.Templates
-                .Include(t => t.User)
-                .Include(t => t.Tags)
-                .Where(t => t.IsPublic);
-
-            if (User.Identity.IsAuthenticated)
-            {
-                var user = await _userManager.GetUserAsync(User);
-
-                if (User.IsInRole("Admin"))
-                {
-                    queryable = _context.Templates
-                        .Include(t => t.User)
-                        .Include(t => t.Tags);
-                }
-                else if (user != null)
-                {
-                    queryable = queryable.Union(_context.Templates
-                        .Include(t => t.User)
-                        .Include(t => t.Tags)
-                        .Where(t => !t.IsPublic &&
-                            (t.AllowedUsers.Any(au => au.UserId == user.Id) ||
-                            t.UserId == user.Id)));
-                }
-            }
+            var queryable = await BuildBaseQuery();
 
             if (_fullTextSearchEnabled)
             {
@@ -141,9 +196,14 @@ namespace FormBuilder.Controllers
                 }
             }
 
-            return await queryable
-                .OrderByDescending(t => t.CreatedDate)
-                .ToListAsync();
+            return queryable;
+        }
+
+        private IQueryable<Template> ApplySorting(IQueryable<Template> query, string tab)
+        {
+            return tab == "popular"
+                ? query.OrderByDescending(t => t.Likes.Count)
+                : query.OrderByDescending(t => t.CreatedDate);
         }
     }
 }
