@@ -68,8 +68,9 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Question Text</label>
+                                <label class="form-label">Question Text <span class="text-danger">*</span></label>
                                 <input name="Questions[${index}].Title" class="form-control" required />
+                                <span class="text-danger field-validation-valid" data-valmsg-for="Questions[${index}].Title" data-valmsg-replace="true"></span>
                             </div>
 
                             <div class="mb-3">
@@ -89,14 +90,16 @@
                             </div>
 
                             <div class="options-container" style="display: none;">
-                                <label class="form-label">Options</label>
+                                <label class="form-label">Options <span class="text-danger">*</span></label>
                                 <div class="options-list mb-2"></div>
                                 <button type="button" class="btn btn-sm btn-outline-primary add-option">Add Option</button>
+                                <span class="text-danger options-validation" style="display: none;">At least one option is required for Multiple Choice questions</span>
                             </div>
                         </div>
                     </div>
                 `;
                 $('#questionsContainer').append(newQuestion);
+                $.validator.unobtrusive.parse($('#templateForm'));
             });
 
             $(document).on('click', '.remove-question', function() {
@@ -107,17 +110,20 @@
             $(document).on('click', '.add-option', function() {
                 const optionsList = $(this).siblings('.options-list');
                 const questionIndex = $(this).closest('.question-card').data('index');
+                const optionCount = optionsList.find('.input-group').length;
                 const newOption = `
                     <div class="input-group mb-2">
-                        <input name="Questions[${questionIndex}].Options" class="form-control" required />
+                        <input name="Questions[${questionIndex}].Options[${optionCount}]" class="form-control" required />
                         <button type="button" class="btn btn-outline-danger remove-option">Remove</button>
                     </div>
                 `;
                 optionsList.append(newOption);
+                $.validator.unobtrusive.parse($('#templateForm'));
             });
 
             $(document).on('click', '.remove-option', function() {
                 $(this).closest('.input-group').remove();
+                validateOptions();
             });
 
             $('#IsPublic').change(function() {
@@ -136,6 +142,7 @@
                     </div>
                 `;
                 $('#allowedUsersList').append(newUser);
+                $.validator.unobtrusive.parse($('#templateForm'));
             });
 
             $(document).on('click', '.remove-user', function() {
@@ -150,6 +157,7 @@
                     </div>
                 `;
                 $('#tagsList').append(newTag);
+                $.validator.unobtrusive.parse($('#templateForm'));
             });
 
             $(document).on('click', '.remove-tag', function() {
@@ -189,10 +197,66 @@
                         if (name && name.includes('Questions[')) {
                             const newName = name.replace(/Questions\[\d+\]/, `Questions[${index}]`);
                             $(this).attr('name', newName);
+
+                            const valMsgFor = $(this).next('.field-validation-valid').attr('data-valmsg-for');
+                            if (valMsgFor) {
+                                $(this).next('.field-validation-valid').attr('data-valmsg-for', valMsgFor.replace(/Questions\[\d+\]/, `Questions[${index}]`));
+                            }
                         }
                     });
                 });
+                $.validator.unobtrusive.parse($('#templateForm'));
             }
+
+            function validateOptions() {
+                $('.question-card').each(function() {
+                    const questionType = $(this).find('.question-type').val();
+                    const optionsContainer = $(this).find('.options-container');
+
+                    if (questionType === 'MultipleChoice') {
+                        const optionsCount = $(this).find('.options-list .input-group').length;
+                        const validationMessage = $(this).find('.options-validation');
+
+                        if (optionsCount === 0) {
+                            validationMessage.show();
+                            $(this).find('.add-option').addClass('is-invalid');
+                        } else {
+                            validationMessage.hide();
+                            $(this).find('.add-option').removeClass('is-invalid');
+                        }
+                    }
+                });
+            }
+
+            $('#templateForm').submit(function(e) {
+                let isValid = true;
+
+                $('.question-card').each(function() {
+                    const titleInput = $(this).find('input[name$=".Title"]');
+                    if (!titleInput.val()) {
+                        isValid = false;
+                    }
+                });
+
+                $('.question-card').each(function() {
+                    const questionType = $(this).find('.question-type').val();
+                    if (questionType === 'MultipleChoice') {
+                        const optionsCount = $(this).find('.options-list .input-group').length;
+                        if (optionsCount === 0) {
+                            isValid = false;
+                            $(this).find('.options-validation').show();
+                            $(this).find('.add-option').addClass('is-invalid');
+                        }
+                    }
+                });
+
+                if (!isValid) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                return true;
+            });
         });
     </script>
 }
