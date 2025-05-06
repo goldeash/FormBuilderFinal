@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FormBuilder.Models;
 using FormBuilder.Data;
+using FormBuilderFinal.ViewModels;
 
 namespace FormBuilder.Controllers
 {
@@ -165,15 +166,6 @@ namespace FormBuilder.Controllers
                 await transaction.RollbackAsync();
                 return StatusCode(500, "An error occurred while deleting the user");
             }
-        }
-
-        public class UserViewModel
-        {
-            public string Id { get; set; }
-            public string Email { get; set; }
-            public bool IsAdmin { get; set; }
-            public bool IsBlocked { get; set; }
-            public bool IsCurrentUser { get; set; }
         }
     }
 }   
