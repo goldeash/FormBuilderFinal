@@ -55,7 +55,6 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// Middleware to set theme from cookie
 app.Use(async (context, next) =>
 {
     var theme = context.Request.Cookies["theme"];

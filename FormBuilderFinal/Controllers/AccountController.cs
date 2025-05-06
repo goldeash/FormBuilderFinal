@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using FormBuilder.Models;
-using System.ComponentModel.DataAnnotations;
+using FormBuilderFinal.ViewModels;
 using FormBuilder.Services;
 
 namespace FormBuilder.Controllers
@@ -113,34 +113,5 @@ namespace FormBuilder.Controllers
             }
             return RedirectToAction("Index", "Home");
         }
-    }
-
-    public class RegisterViewModel
-    {
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; }
-
-        [Required]
-        [DataType(DataType.Password)]
-        public string Password { get; set; }
-
-        [DataType(DataType.Password)]
-        [Compare("Password", ErrorMessage = "Passwords don't match")]
-        public string ConfirmPassword { get; set; }
-    }
-
-    public class LoginViewModel
-    {
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; }
-
-        [Required]
-        [DataType(DataType.Password)]
-        public string Password { get; set; }
-
-        [Display(Name = "Remember me?")]
-        public bool RememberMe { get; set; }
     }
 }
