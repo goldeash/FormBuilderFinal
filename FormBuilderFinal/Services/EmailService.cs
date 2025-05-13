@@ -58,7 +58,6 @@ namespace FormBuilder.Services
             }
             catch (Exception ex)
             {
-                // В реальном приложении следует добавить логгирование
                 Console.WriteLine($"Error sending email: {ex.Message}");
             }
         }
